@@ -1,0 +1,41 @@
+{
+  "canisters": {
+    "internet_identity": {
+      "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
+      "frontend": {},
+      "remote": {
+        "id": {
+          "ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+        }
+      },
+      "type": "custom",
+      "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz"
+    },
+    "playing_cards_backend": {
+      "candid": "src/playing_cards_backend/playing_cards_backend.did",
+      "declarations": {
+        "node_compatibility": true
+      },
+      "package": "playing_cards_backend",
+      "type": "rust"
+    },
+    "playing_cards_frontend": {
+      "dependencies": [
+        "playing_cards_backend"
+      ],
+      "source": [
+        "src/playing_cards_frontend/dist"
+      ],
+      "type": "assets",
+      "workspace": "playing_cards_frontend"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
