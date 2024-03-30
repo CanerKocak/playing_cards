@@ -1,5 +1,22 @@
 #!/bin/bash
 
+
+dfx canister call playing_cards_backend mintDip721 \
+"(principal\"$(dfx identity get-principal)\", vec{record{
+purpose=variant{Rendered};
+data=blob\"$(echo -n "hello" | base64)\";
+key_val_data=vec{
+record{
+\"contentType\";
+variant{TextContent=\"text/plain\"};
+};
+record{
+\"locationType\";
+variant{Nat8Content=4:nat8}
+};
+}
+}}, blob\"$(echo -n "hello" | base64)\")"
+
 dfx deploy windoge --argument "(variant {
   Init = record {
     token_symbol = \"W98\";
