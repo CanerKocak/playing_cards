@@ -14,5 +14,8 @@
   "type": "module",
   "workspaces": [
     "src/playing_cards_frontend"
-  ]
+  ],
+  "dependencies": {
+    "@skeletonlabs/skeleton": "^2.9.0"
+  }
 }

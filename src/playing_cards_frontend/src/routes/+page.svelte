@@ -1,9 +1,9 @@
 <script>
   import "../index.scss";
-  import { backend } from "$lib/canisters";
+  import { backend } from "$lib/canisters/canisters";
   import { onMount } from "svelte";
+  import NftCard from "$lib/components/NftCard.svelte";
 
-  let greeting = "";
   let nfts = [];
   let mintPrincipal = "";
   let mintMetadata = [];
@@ -11,17 +11,16 @@
 
   onMount(fetchNFTs);
 
-  async function onSubmit(event) {
-    const name = event.target.name.value;
-    greeting = await backend.greet(name);
-  }
-
   async function fetchNFTs() {
     nfts = await backend.listAllNftsFull();
   }
 
   async function mintNFT() {
-    const response = await backend.mintDip721(mintPrincipal, mintMetadata, mintContent);
+    const response = await backend.mintDip721(
+      mintPrincipal,
+      mintMetadata,
+      mintContent
+    );
     if (response.Ok) {
       console.log("NFT minted successfully:", response.Ok);
       await fetchNFTs();
@@ -40,46 +39,52 @@
   }
 </script>
 
-<main>
-  <img src="/logo2.svg" alt="DFINITY logo" />
-  <h1>Welcome to Playing Cards Terminal</h1>
-
-  <form on:submit|preventDefault={onSubmit}>
-    <label for="name">Enter your name:</label>
-    <input type="text" id="name" name="name" required />
-    <button type="submit">Submit</button>
-  </form>
-
-  {#if greeting}
-    <p>Greeting: {greeting}</p>
-  {/if}
-
-  <h2>NFTs</h2>
-  <button on:click={fetchNFTs}>Refresh NFTs</button>
-
-  {#if nfts.length > 0}
-    <ul>
-      {#each nfts as nft}
-        <li>
-          <p>ID: {nft.id}</p>
-          <p>Owner: {nft.owner}</p>
-          <!-- Display other NFT properties as needed -->
-        </li>
+<div class="container p-4">
+  <main>
+    <div class="grid grid-rows-10 gap-1">
+      {#each Array(6) as _, rowIndex}
+        <div class="flex overflow-x-auto snap-x snap-mandatory scroll-pl-4">
+          {#each nfts.slice(rowIndex * 8, (rowIndex + 1) * 8) as nft}
+            <div class="nft-card flex-shrink-0 mr-4 mb-4">
+              <NftCard {nft} />
+            </div>
+          {/each}
+        </div>
       {/each}
-    </ul>
-  {:else}
-    <p>No NFTs found.</p>
-  {/if}
-
-  <h2>Mint NFT</h2>
-  <label for="mintPrincipal">Mint to Principal:</label>
-  <input type="text" id="mintPrincipal" bind:value={mintPrincipal} />
-
-  <label for="mintMetadata">Metadata:</label>
-  <textarea id="mintMetadata" bind:value={mintMetadata}></textarea>
-
-  <label for="mintContent">Content:</label>
-  <input type="file" id="mintContent" on:change={handleFileUpload} />
-
-  <button on:click={mintNFT}>Mint NFT</button>
-</main>
+    </div>
+    <div class="mt-8">
+      <h2 class="text-2xl font-semibold mb-4">Mint a New NFT</h2>
+      <form on:submit|preventDefault={mintNFT}>
+        <div class="mb-4">
+          <label for="mintPrincipal" class="block mb-2">Principal:</label>
+          <input
+            type="text"
+            id="mintPrincipal"
+            bind:value={mintPrincipal}
+            class="input"
+          />
+        </div>
+        <div class="mb-4">
+          <label for="mintMetadata" class="block mb-2">Metadata:</label>
+          <textarea id="mintMetadata" bind:value={mintMetadata} class="textarea"
+          ></textarea>
+        </div>
+        <div class="mb-4">
+          <label for="mintContent" class="block mb-2">Content:</label>
+          <input
+            type="file"
+            id="mintContent"
+            on:change={handleFileUpload}
+            class="file-input"
+          />
+        </div>
+        <button type="submit" class="btn variant-filled">Mint NFT</button>
+      </form>
+    </div>
+  </main>
+  <footer class="mt-8">
+    <p class="text-center text-gray-500">
+      &copy; 2024 My NFT Project. All rights reserved.
+    </p>
+  </footer>
+</div>
