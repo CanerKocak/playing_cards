@@ -8,6 +8,7 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
+use std::fs;
 use std::iter::FromIterator;
 use std::mem;
 use std::num::TryFromIntError;
@@ -17,7 +18,7 @@ use candid::{CandidType, Deserialize, Encode, Principal};
 use ic_cdk::api::call::ArgDecoderConfig;
 use ic_cdk::{
     api::{self, call},
-    storage,
+    storage, trap,
 };
 use ic_certified_map::Hash;
 use include_base64::include_base64;
@@ -60,6 +61,60 @@ struct InitArgs {
     symbol: String,
 }
 
+fn read_image_file(path: &str) -> Vec<u8> {
+    fs::read(path).expect("Failed to read image file")
+}
+
+fn create_metadata(
+    purpose: MetadataPurpose,
+    content_type: &str,
+    location_type: u8,
+    data: Vec<u8>,
+) -> MetadataDesc {
+    vec![MetadataPart {
+        purpose,
+        data,
+        key_val_data: vec![
+            (
+                "contentType".to_string(),
+                MetadataVal::TextContent(content_type.to_string()),
+            ),
+            (
+                "locationType".to_string(),
+                MetadataVal::Nat8Content(location_type),
+            ),
+        ]
+        .into_iter()
+        .collect(),
+    }]
+}
+
+fn mint_default_cards(custodian: Principal) -> Result<(), ConstrainedError> {
+    let cards = vec![include_bytes!("default_cards/clubs 2.png")];
+    // Ensure that the byte arrays have the correct size
+    let cards: Vec<&[u8]> = cards.iter().map(|card| &card[..9716]).collect();
+
+    for card in cards {
+        let image_data = card.to_vec();
+        let metadata = create_metadata(
+            MetadataPurpose::Rendered,
+            "image/png",
+            4,
+            image_data.clone(),
+        );
+
+        match mint(custodian, metadata, image_data) {
+            Ok(_) => println!("Card minted successfully"),
+            Err(e) => {
+                println!("Failed to mint card: {:?}", e);
+                return Err(e);
+            }
+        }
+    }
+
+    Ok(())
+}
+
 #[init]
 fn init(args: InitArgs) {
     STATE.with(|state| {
@@ -71,6 +126,11 @@ fn init(args: InitArgs) {
         state.symbol = args.symbol;
         state.logo = args.logo;
     });
+
+    // Mint default cards to this canister
+    if let Err(e) = mint_default_cards(api::id()) {
+        trap(&format!("Failed to mint default cards: {:?}", e));
+    }
 }
 
 #[derive(CandidType, Deserialize)]
@@ -514,7 +574,7 @@ enum InterfaceId {
     TransferNotification,
 }
 
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 enum ConstrainedError {
     Unauthorized,
 }
@@ -619,6 +679,27 @@ struct SaleInfo {
 struct Bid {
     bidder: Principal,
     amount: u64,
+}
+
+// ----------------------
+// Edit NFT Content
+// ----------------------
+
+#[update]
+fn edit_nft_content(token_id: u64, new_content: Vec<u8>) -> Result {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let nft = state
+            .nfts
+            .get_mut(usize::try_from(token_id)?)
+            .ok_or(Error::InvalidTokenId)?;
+        if nft.owner != api::caller() {
+            Err(Error::Unauthorized)
+        } else {
+            nft.content = new_content;
+            Ok(state.next_txid())
+        }
+    })
 }
 
 // ----------------------
