@@ -8,7 +8,6 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
-use std::fs;
 use std::iter::FromIterator;
 use std::mem;
 use std::num::TryFromIntError;
@@ -30,6 +29,38 @@ const MGMT: Principal = Principal::from_slice(&[]);
 thread_local! {
     static STATE: RefCell<State> = RefCell::default();
 }
+
+type Tokens = u64;
+
+#[derive(CandidType, Deserialize)]
+struct Account {
+    owner: Principal,
+    subaccount: Option<Vec<u8>>,
+}
+
+#[derive(CandidType, Deserialize)]
+struct TransferArg {
+    from_subaccount: Option<Vec<u8>>,
+    to: Account,
+    amount: Tokens,
+    fee: Option<Tokens>,
+    memo: Option<Vec<u8>>,
+    created_at_time: Option<u64>,
+}
+
+#[derive(CandidType, Deserialize)]
+enum TransferError {
+    BadFee { expected_fee: Tokens },
+    BadBurn { min_burn_amount: Tokens },
+    InsufficientFunds { balance: Tokens },
+    TooOld,
+    CreatedInFuture { ledger_time: u64 },
+    TemporarilyUnavailable,
+    Duplicate { duplicate_of: u64 },
+    GenericError { error_code: u64, message: String },
+}
+
+// type TransferResult = Result<u64, TransferError>;
 
 #[derive(CandidType, Deserialize)]
 struct StableState {
@@ -59,10 +90,6 @@ struct InitArgs {
     logo: Option<LogoResult>,
     name: String,
     symbol: String,
-}
-
-fn read_image_file(path: &str) -> Vec<u8> {
-    fs::read(path).expect("Failed to read image file")
 }
 
 fn create_metadata(
@@ -512,6 +539,7 @@ struct State {
     name: String,
     symbol: String,
     txid: u128,
+    sale_listings: HashMap<u64, SaleListing>, // token_id to SaleListing
 }
 
 #[derive(CandidType, Deserialize, Clone)]
@@ -639,6 +667,7 @@ fn set_custodian(user: Principal, custodian: bool) -> Result<()> {
 fn is_custodian(principal: Principal) -> bool {
     STATE.with(|state| state.borrow().custodians.contains(&principal))
 }
+
 /// This makes this Candid service self-describing, so that for example Candid UI, but also other
 /// tools, can seamlessly integrate with it. The concrete interface (method name etc.) is
 /// provisional, but works.
@@ -658,33 +687,111 @@ fn list_all_nfts_full() -> Vec<Nft> {
 }
 
 // ----------------------
-// Thread-local Storage for NFT Sales Information
+// NFT Sales
 // ----------------------
 
-// This utilizes Rust's thread-local storage capabilities to safely store and manage sales information
-// for each NFT, ensuring thread safety and avoiding the use of unsafe code patterns.
-thread_local! {
-    static SALES: RefCell<HashMap<u64, SaleInfo>> = RefCell::new(HashMap::new());
-    static USER_BALANCES: RefCell<HashMap<Principal, u64>> = RefCell::new(HashMap::new());
-}
-
-#[derive(Clone, Debug, CandidType, Deserialize)]
-struct SaleInfo {
-    price: u64,
+#[derive(CandidType, Deserialize, Clone)]
+struct SaleListing {
+    token_id: u64,
     seller: Principal,
-    bids: Vec<Bid>,
+    price: Tokens,
 }
 
-#[derive(Clone, Debug, CandidType, Deserialize)]
-struct Bid {
-    bidder: Principal,
-    amount: u64,
+// FIX THIS TODO DEBUG OWNER OF NFT CALLER REVERSE FOR TEST
+#[update]
+fn list_nft_for_sale(token_id: u64, price: Tokens) -> Result {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let nft = state
+            .nfts
+            .get(usize::try_from(token_id)?)
+            .ok_or(Error::InvalidTokenId)?;
+        if nft.owner == api::caller() {
+            Err(Error::Unauthorized)
+        } else {
+            let sale_listing = SaleListing {
+                token_id,
+                seller: api::caller(),
+                price,
+            };
+            state.sale_listings.insert(token_id, sale_listing);
+            Ok(state.next_txid())
+        }
+    })
 }
 
+#[update]
+fn remove_nft_from_sale(token_id: u64) -> Result {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let sale_listing = state
+            .sale_listings
+            .get(&token_id)
+            .ok_or(Error::NFTNotForSale)?;
+        if sale_listing.seller != api::caller() {
+            Err(Error::Unauthorized)
+        } else {
+            state.sale_listings.remove(&token_id);
+            Ok(state.next_txid())
+        }
+    })
+}
+// buy NFT
+#[derive(CandidType, Deserialize, Clone)]
+struct BuyNftArgs {
+    token_id: u64,
+    amount: Tokens,
+}
+#[update]
+async fn buy_nft(args: BuyNftArgs) -> Result {
+    let (result,): (Result,) = api::call::call(
+        Principal::from_text("rh2pm-ryaaa-aaaan-qeniq-cai").unwrap(),
+        "transfer",
+        (TransferArg {
+            from_subaccount: None,
+            to: Account {
+                owner: api::id(),
+                subaccount: None,
+            },
+            amount: args.amount,
+            fee: None,
+            memo: None,
+            created_at_time: None,
+        },),
+    )
+    .await
+    .map_err(|(code, message)| {
+        Error::TransferFailed(format!("Code: {:?}, Message: {}", code, message))
+    })?;
+
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let sale_listing = state
+            .sale_listings
+            .get(&args.token_id)
+            .ok_or(Error::NFTNotForSale)?;
+
+        if args.amount < sale_listing.price {
+            return Err(Error::InsufficientBalance);
+        }
+
+        let nft = state
+            .nfts
+            .get_mut(usize::try_from(args.token_id)?)
+            .ok_or(Error::InvalidTokenId)?;
+
+        // if nft.owner == api::caller() {
+        //     return Err(Error::Unauthorized);
+        // }
+
+        nft.owner = api::caller();
+        state.sale_listings.remove(&args.token_id);
+        Ok(state.next_txid())
+    })
+}
 // ----------------------
 // Edit NFT Content
 // ----------------------
-
 #[update]
 fn edit_nft_content(token_id: u64, new_content: Vec<u8>) -> Result {
     STATE.with(|state| {

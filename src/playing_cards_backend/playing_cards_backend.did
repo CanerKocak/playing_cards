@@ -1,3 +1,4 @@
+type BuyNftArgs = record { token_id : nat64; amount : nat64 };
 type ConstrainedError = variant { Unauthorized };
 type Error = variant {
   InsufficientPrepaidBalance;
@@ -59,12 +60,16 @@ service : (InitArgs) -> {
   approveDip721 : (principal, nat64) -> (Result);
   balanceOfDip721 : (principal) -> (nat64) query;
   burnDip721 : (nat64) -> (Result);
+  buy_nft : (BuyNftArgs) -> (Result);
+  edit_nft_content : (nat64, blob) -> (Result);
   isApprovedForAllDip721 : (principal) -> (bool) query;
   is_custodian : (principal) -> (bool) query;
   listAllNftsFull : () -> (vec Nft) query;
+  list_nft_for_sale : (nat64, nat64) -> (Result);
   mintDip721 : (principal, vec MetadataPart, blob) -> (Result_1);
   nameDip721 : () -> (text) query;
   ownerOfDip721 : (nat64) -> (Result_2) query;
+  remove_nft_from_sale : (nat64) -> (Result);
   safeTransferFromDip721 : (principal, principal, nat64) -> (Result);
   safeTransferFromNotifyDip721 : (principal, principal, nat64, blob) -> (
       Result,
