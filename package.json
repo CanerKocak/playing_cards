@@ -17,5 +17,9 @@
   ],
   "dependencies": {
     "@skeletonlabs/skeleton": "^2.9.0"
+  },
+  "devDependencies": {
+    "@dfinity/auth-client": "^1.2.0",
+    "@dfinity/identity": "^1.2.0"
   }
 }

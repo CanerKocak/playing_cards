@@ -163,6 +163,7 @@ fn init(args: InitArgs) {
 #[derive(CandidType, Deserialize)]
 enum Error {
     Unauthorized,
+    Unauthorized2(String),
     InvalidTokenId,
     ZeroAddress,
     InsufficientBalance,
@@ -180,6 +181,7 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Unauthorized => write!(f, "Unauthorized"),
+            Error::Unauthorized2(msg) => write!(f, "Unauthorized: {}", msg),
             Error::InvalidTokenId => write!(f, "Invalid token ID"),
             Error::ZeroAddress => write!(f, "Zero address"),
             Error::InsufficientBalance => write!(f, "Insufficient balance"),
@@ -697,27 +699,38 @@ struct SaleListing {
     price: Tokens,
 }
 
-// FIX THIS TODO DEBUG OWNER OF NFT CALLER REVERSE FOR TEST
 #[update]
-fn list_nft_for_sale(token_id: u64, price: Tokens) -> Result {
+fn list_nft_for_sale(token_id: u64, price: Tokens) -> Result<(), Error> {
+    let caller = api::caller();
+    if owner_of(token_id).map_err(|_| Error::InvalidTokenId)? != caller {
+        return Err(Error::Unauthorized);
+    }
+
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let nft = state
             .nfts
-            .get(usize::try_from(token_id)?)
+            .get_mut(usize::try_from(token_id)?)
             .ok_or(Error::InvalidTokenId)?;
-        if nft.owner == api::caller() {
-            Err(Error::Unauthorized)
-        } else {
-            let sale_listing = SaleListing {
+
+        // Transfer ownership to the canister
+        nft.owner = api::id();
+
+        state.sale_listings.insert(
+            token_id,
+            SaleListing {
                 token_id,
-                seller: api::caller(),
+                seller: caller,
                 price,
-            };
-            state.sale_listings.insert(token_id, sale_listing);
-            Ok(state.next_txid())
-        }
+            },
+        );
+        Ok(())
     })
+}
+
+#[query]
+fn get_caller() -> Principal {
+    api::caller()
 }
 
 #[update]
@@ -731,6 +744,10 @@ fn remove_nft_from_sale(token_id: u64) -> Result {
         if sale_listing.seller != api::caller() {
             Err(Error::Unauthorized)
         } else {
+            let res = transfer_from(api::id(), sale_listing.seller, token_id);
+            if res.is_err() {
+                return res;
+            }
             state.sale_listings.remove(&token_id);
             Ok(state.next_txid())
         }
@@ -742,9 +759,10 @@ struct BuyNftArgs {
     token_id: u64,
     amount: Tokens,
 }
+
 #[update]
 async fn buy_nft(args: BuyNftArgs) -> Result {
-    let (result,): (Result,) = api::call::call(
+    let (_result,): (Result,) = api::call::call(
         Principal::from_text("rh2pm-ryaaa-aaaan-qeniq-cai").unwrap(),
         "transfer",
         (TransferArg {
@@ -780,15 +798,14 @@ async fn buy_nft(args: BuyNftArgs) -> Result {
             .get_mut(usize::try_from(args.token_id)?)
             .ok_or(Error::InvalidTokenId)?;
 
-        // if nft.owner == api::caller() {
-        //     return Err(Error::Unauthorized);
-        // }
-
+        // Transfer ownership to the buyer
         nft.owner = api::caller();
+
         state.sale_listings.remove(&args.token_id);
         Ok(state.next_txid())
     })
 }
+
 // ----------------------
 // Edit NFT Content
 // ----------------------

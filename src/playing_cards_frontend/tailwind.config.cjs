@@ -22,7 +22,7 @@ module.exports = {
 	plugins: [
 		skeleton({
 			themes: {
-				preset: [ "wintry" ],
+				preset: [ "gold-nouveau" ],
 			}
 		})
 	]

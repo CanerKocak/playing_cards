@@ -1,12 +1,20 @@
 <script>
   import "../app.pcss";
   import { AppRail, AppRailTile, AppShell, AppBar } from '@skeletonlabs/skeleton';
+  import { Modal } from '@skeletonlabs/skeleton';
+  import { initializeStores } from '@skeletonlabs/skeleton';
+  import { Toast } from '@skeletonlabs/skeleton';
+  import Login from '$lib/components/Login.svelte';
+  initializeStores();
 </script>
 
+<Toast />
+<Modal />
 <AppShell>
   <svelte:fragment slot="header">
     <AppBar class="bg-primary-500 text-white">
       <h1 class="text-2xl font-bold">Playing Cards Collection</h1>
+      <Login/>
     </AppBar>
   </svelte:fragment>
   <svelte:fragment slot="sidebarLeft">
@@ -37,5 +45,9 @@
   <slot />
   <!-- ---- / ---- -->
   <!-- (pageFooter) -->
-  <!-- (footer) -->
+  <footer class="mt-8">
+    <p class="text-center text-gray-500">
+      &copy; 2024 My NFT Project. All rights reserved.
+    </p>
+  </footer>
 </AppShell>

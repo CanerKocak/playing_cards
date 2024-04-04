@@ -13,12 +13,13 @@
     },
     "playing_cards_backend": {
       "candid": "src/playing_cards_backend/playing_cards_backend.did",
-      "declarations": {
-        "node_compatibility": true
-      },
       "package": "playing_cards_backend",
       "type": "rust",
-      "init_arg": "(record { name = \"Playing Cards\"; symbol = \"Cards98\"; logo = opt record { data = \"$(base64 -i ./logo.png)\"; logo_type = \"image/png\"; }; custodians = opt vec { principal \"v5b76-hgqrn-cos3w-l6hiy-w67gk-7rixd-i5squ-iadpa-dxmer-ztjqf-lqe\" }; })"
+      "init_arg": "(record { name = \"Playing Cards\"; symbol = \"Cards98\"; logo = opt record { data = \"$(base64 -i ./logo.png)\"; logo_type = \"image/png\"; }; custodians = opt vec { principal \"v5b76-hgqrn-cos3w-l6hiy-w67gk-7rixd-i5squ-iadpa-dxmer-ztjqf-lqe\" }; })",
+      "optimize": "cycles",
+      "declarations": {
+        "node_compatibility": true
+      }
     },
     "playing_cards_frontend": {
       "dependencies": [
@@ -39,4 +40,5 @@
   },
   "output_env_file": ".env",
   "version": 1
+  
 }
