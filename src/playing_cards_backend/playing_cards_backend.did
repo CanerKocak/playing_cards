@@ -63,7 +63,6 @@ service : (InitArgs) -> {
   burnDip721 : (nat64) -> (Result);
   buy_nft : (BuyNftArgs) -> (Result);
   edit_nft_content : (nat64, blob) -> (Result);
-  get_caller : () -> (principal) query;
   isApprovedForAllDip721 : (principal) -> (bool) query;
   is_custodian : (principal) -> (bool) query;
   listAllNftsFull : () -> (vec Nft) query;
@@ -86,4 +85,5 @@ service : (InitArgs) -> {
   totalSupplyDip721 : () -> (nat64) query;
   transferFromDip721 : (principal, principal, nat64) -> (Result);
   transferFromNotifyDip721 : (principal, principal, nat64, blob) -> (Result);
+  whoami : () -> (text) query;
 }

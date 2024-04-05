@@ -121,13 +121,10 @@
   }
 
   async function getCallerInfo() {
-    const response = await backend.get_caller();
-    if (response.Ok) {
-      console.log("Caller info:", response.Ok);
-    } else {
-      console.error("Error getting caller info:", response.Err);
-    }
+    const caller = await backend.whoami();
+    console.log("Caller info:", caller);
   }
+  
 </script>
 
 <div class="container p-4">

@@ -729,8 +729,9 @@ fn list_nft_for_sale(token_id: u64, price: Tokens) -> Result<(), Error> {
 }
 
 #[query]
-fn get_caller() -> Principal {
-    api::caller()
+fn whoami() -> String {
+    let caller = api::caller();
+    caller.to_text()
 }
 
 #[update]
