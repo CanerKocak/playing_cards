@@ -13,7 +13,7 @@
 
     if (isLoggedIn) {
       principal = authClient.getIdentity().getPrincipal().toText();
-      updateBackend(authClient.getIdentity()); 
+      updateBackend(authClient.getIdentity());
     }
   });
 
@@ -34,7 +34,7 @@
         isLoggedIn = true;
         const identity = await authClient.getIdentity();
         principal = identity.getPrincipal().toText();
-        updateBackend(authClient.getIdentity()); 
+        updateBackend(authClient.getIdentity());
       },
       onError: (error) => {
         console.error("Login error:", error);

@@ -30,6 +30,16 @@
       ],
       "type": "assets",
       "workspace": "playing_cards_frontend"
+    },
+    "windoge": {
+      "type": "custom",
+      "wasm": "src/windoge/icrc/icrc1.wasm",
+      "candid": "src/windoge/icrc/icrc1.did",
+      "remote": {
+        "id": {
+          "ic": "rh2pm-ryaaa-aaaan-qeniq-cai"
+        }
+      }
     }
   },
   "defaults": {

@@ -13,7 +13,7 @@ use std::mem;
 use std::num::TryFromIntError;
 use std::result::Result as StdResult;
 
-use candid::{CandidType, Deserialize, Encode, Principal};
+use candid::{CandidType, Deserialize, Encode, Nat, Principal};
 use ic_cdk::api::call::ArgDecoderConfig;
 use ic_cdk::{
     api::{self, call},
@@ -21,6 +21,8 @@ use ic_cdk::{
 };
 use ic_certified_map::Hash;
 use include_base64::include_base64;
+
+mod icrc1;
 
 mod http;
 
@@ -542,6 +544,7 @@ struct State {
     symbol: String,
     txid: u128,
     sale_listings: HashMap<u64, SaleListing>, // token_id to SaleListing
+    icrc1_canister_id: Option<String>,        // Canister ID of the ICRC1 canister
 }
 
 #[derive(CandidType, Deserialize, Clone)]
@@ -708,13 +711,13 @@ fn list_nft_for_sale(token_id: u64, price: Tokens) -> Result<(), Error> {
 
     STATE.with(|state| {
         let mut state = state.borrow_mut();
-        let nft = state
-            .nfts
-            .get_mut(usize::try_from(token_id)?)
-            .ok_or(Error::InvalidTokenId)?;
 
-        // Transfer ownership to the canister
-        nft.owner = api::id();
+        let res = safe_transfer_from(caller, api::id(), token_id);
+        if res.is_err() {
+            return Err(Error::TransferFailed(
+                "Failed to transfer NFT to the canister".to_string(),
+            ));
+        }
 
         state.sale_listings.insert(
             token_id,
@@ -728,12 +731,6 @@ fn list_nft_for_sale(token_id: u64, price: Tokens) -> Result<(), Error> {
     })
 }
 
-#[query]
-fn whoami() -> String {
-    let caller = api::caller();
-    caller.to_text()
-}
-
 #[update]
 fn remove_nft_from_sale(token_id: u64) -> Result {
     STATE.with(|state| {
@@ -745,7 +742,7 @@ fn remove_nft_from_sale(token_id: u64) -> Result {
         if sale_listing.seller != api::caller() {
             Err(Error::Unauthorized)
         } else {
-            let res = transfer_from(api::id(), sale_listing.seller, token_id);
+            let res = safe_transfer_from(api::id(), sale_listing.seller, token_id);
             if res.is_err() {
                 return res;
             }
@@ -761,70 +758,113 @@ struct BuyNftArgs {
     amount: Tokens,
 }
 
+// Principal::from_text("rh2pm-ryaaa-aaaan-qeniq-cai").unwrap()
+
+// ----------------------
+// Buy NFT
+// ----------------------
+
 #[update]
-async fn buy_nft(args: BuyNftArgs) -> Result {
-    let (_result,): (Result,) = api::call::call(
-        Principal::from_text("rh2pm-ryaaa-aaaan-qeniq-cai").unwrap(),
-        "transfer",
-        (TransferArg {
-            from_subaccount: None,
-            to: Account {
-                owner: api::id(),
-                subaccount: None,
-            },
-            amount: args.amount,
-            fee: None,
-            memo: None,
-            created_at_time: None,
-        },),
-    )
+async fn user_balance() -> Result<Nat, String> {
+    icrc1::icrc1_balance_of(icrc1::BalanceArgs {
+        owner: api::caller(),
+    })
     .await
-    .map_err(|(code, message)| {
-        Error::TransferFailed(format!("Code: {:?}, Message: {}", code, message))
-    })?;
+    .map(|(balance,)| balance)
+    .map_err(|(code, msg)| {
+        format!(
+            "Failed to get balance. Code: {:?}, Message: {:?}",
+            code, msg
+        )
+    })
+}
+
+#[update]
+async fn buy_nft(token_id: u64) -> Result {
+    let sale_listing = STATE.with(|state| state.borrow().sale_listings.get(&token_id).cloned());
+
+    let sale_listing = sale_listing.ok_or(Error::NFTNotForSale)?;
+    let buyer = api::caller();
+    let seller = sale_listing.seller;
+    let price = sale_listing.price;
+
+    let _ = icrc1::icrc1_transfer(icrc1::TransferArgs {
+        to: seller,
+        amount: Nat::from(price),
+        fee: None,
+        memo: None,
+        created_at_time: None,
+    })
+    .await
+    .map_err(|e| Error::TransferFailed(format!("{:?}", e)))?;
+    let _ = Ok::<(), Error>(());
 
     STATE.with(|state| {
         let mut state = state.borrow_mut();
-        let sale_listing = state
-            .sale_listings
-            .get(&args.token_id)
-            .ok_or(Error::NFTNotForSale)?;
-
-        if args.amount < sale_listing.price {
-            return Err(Error::InsufficientBalance);
-        }
-
-        let nft = state
-            .nfts
-            .get_mut(usize::try_from(args.token_id)?)
-            .ok_or(Error::InvalidTokenId)?;
-
-        // Transfer ownership to the buyer
-        nft.owner = api::caller();
-
-        state.sale_listings.remove(&args.token_id);
+        safe_transfer_from(api::id(), buyer, token_id)?;
+        state.sale_listings.remove(&token_id);
         Ok(state.next_txid())
     })
+}
+
+// ----------------------
+// Query Sale Listings
+// ----------------------
+#[query]
+fn list_sale_listings() -> Vec<SaleListing> {
+    STATE.with(|state| state.borrow().sale_listings.values().cloned().collect())
 }
 
 // ----------------------
 // Edit NFT Content
 // ----------------------
 #[update]
-fn edit_nft_content(token_id: u64, new_content: Vec<u8>) -> Result {
+async fn edit_nft_content(token_id: u64, new_content: Vec<u8>) -> Result {
+    let user = api::caller();
+    let balance = icrc1::icrc1_balance_of(icrc1::BalanceArgs { owner: user })
+        .await
+        .map(|(balance,)| balance)
+        .map_err(|_| Error::BalanceRetrievalFailed)?;
+
+    let owner = owner_of(token_id).map_err(|_| Error::InvalidTokenId)?;
+    if owner != user {
+        return Err(Error::Unauthorized);
+    }
+
+    if balance < Nat::from(51u32) {
+        return Err(Error::InsufficientBalance);
+    }
+
+    let _ = icrc1::icrc1_transfer(icrc1::TransferArgs {
+        to: api::id(),
+        amount: Nat::from(51u32),
+        fee: None,
+        memo: None,
+        created_at_time: None,
+    })
+    .await
+    .map_err(|e| Error::TransferFailed(format!("{:?}", e)))?;
+    let _ = Ok::<(), Error>(());
+
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let nft = state
             .nfts
             .get_mut(usize::try_from(token_id)?)
             .ok_or(Error::InvalidTokenId)?;
-        if nft.owner != api::caller() {
+        if nft.owner != user {
             Err(Error::Unauthorized)
         } else {
             nft.content = new_content;
             Ok(state.next_txid())
         }
     })
+}
+
+// whoami
+#[query]
+fn whoami() -> Principal {
+    api::caller()
 }
 
 // ----------------------
