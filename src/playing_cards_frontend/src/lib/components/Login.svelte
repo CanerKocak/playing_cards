@@ -13,7 +13,6 @@
       principal.set(authClient.getIdentity().getPrincipal().toText());
       loggedIn.set(true);
       updateBackend(authClient.getIdentity());
-      fetchUserBalance();
     }
   });
 

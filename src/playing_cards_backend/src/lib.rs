@@ -126,14 +126,13 @@ fn init(args: InitArgs) {
         state.name = args.name;
         state.symbol = args.symbol;
         state.logo = args.logo;
+
+        // Mint default cards to this canister
+        if let Err(e) = mint_default_cards(api::id()) {
+            trap(&format!("Failed to mint default cards: {:?}", e));
+        }
     });
-
-    // Mint default cards to this canister
-    if let Err(e) = mint_default_cards(api::id()) {
-        trap(&format!("Failed to mint default cards: {:?}", e));
-    }
 }
-
 #[derive(CandidType, Deserialize)]
 enum Error {
     Unauthorized,
@@ -684,12 +683,13 @@ fn list_nft_for_sale(token_id: u64, price: Tokens) -> Result<(), Error> {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
 
-        let res = safe_transfer_from(caller, api::id(), token_id);
-        if res.is_err() {
-            return Err(Error::TransferFailed(
-                "Failed to transfer NFT to the canister".to_string(),
-            ));
-        }
+        let nft = state
+            .nfts
+            .get_mut(usize::try_from(token_id)?)
+            .ok_or(Error::InvalidTokenId)?;
+
+        // transfer the NFT to the canister
+        nft.owner = api::id();
 
         state.sale_listings.insert(
             token_id,
@@ -704,25 +704,31 @@ fn list_nft_for_sale(token_id: u64, price: Tokens) -> Result<(), Error> {
 }
 
 #[update]
-fn remove_nft_from_sale(token_id: u64) -> Result {
+fn remove_sale_listing(token_id: u64) -> Result<(), Error> {
+    // from state get sale_listing and the nft
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         let sale_listing = state
             .sale_listings
-            .get(&token_id)
+            .remove(&token_id)
             .ok_or(Error::NFTNotForSale)?;
+
+        let nft = state
+            .nfts
+            .get_mut(usize::try_from(token_id)?)
+            .ok_or(Error::InvalidTokenId)?;
+
+        // transfer the NFT back to the seller
         if sale_listing.seller != api::caller() {
-            Err(Error::Unauthorized)
-        } else {
-            let res = safe_transfer_from(api::id(), sale_listing.seller, token_id);
-            if res.is_err() {
-                return res;
-            }
-            state.sale_listings.remove(&token_id);
-            Ok(state.next_txid())
+            return Err(Error::Unauthorized);
         }
+
+        nft.owner = sale_listing.seller;
+
+        Ok(())
     })
 }
+
 // buy NFT
 #[derive(CandidType, Deserialize, Clone)]
 struct BuyNftArgs {

@@ -2,7 +2,7 @@
 
 
 # dfx canister call playing_cards_backend mintDip721 \
-# "(principal\"jmgtf-5f3w2-cpefj-dutlg-acquy-twpej-ez2v4-4umgs-oejft-sasmh-mae\", vec{record{
+# "(principal\"lu4l3-ydvu6-oyzk2-3kbbh-rsryd-ywqdg-x22wb-ovoll-dpmab-yahbh-hqe\", vec{record{
 # purpose=variant{Rendered};
 # data=blob\"$(echo -n "hello" | base64)\";
 # key_val_data=vec{
