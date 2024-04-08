@@ -9,4 +9,4 @@ cargo build --release --target wasm32-unknown-unknown --package playing_cards_ba
 candid-extractor target/wasm32-unknown-unknown/release/playing_cards_backend.wasm > src/playing_cards_backend/playing_cards_backend.did
 
 # then copy the candid file to the frontend declarations by dfx generate
-dfx generate
+dfx generate playing_cards_backend

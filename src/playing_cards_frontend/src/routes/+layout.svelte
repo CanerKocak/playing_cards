@@ -1,72 +1,66 @@
 <script>
   import "../app.pcss";
-  import {
-    AppRail,
-    AppRailTile,
-    AppShell,
-    AppBar,
-  } from "@skeletonlabs/skeleton";
+  import { AppRail, AppRailTile, AppShell, AppBar } from "@skeletonlabs/skeleton";
   import { Modal } from "@skeletonlabs/skeleton";
   import { initializeStores } from "@skeletonlabs/skeleton";
   import { Toast } from "@skeletonlabs/skeleton";
   import Login from "$lib/components/Login.svelte";
+  
   initializeStores();
-
-
 </script>
 
 <Toast />
 <Modal />
+
 <AppShell>
   <svelte:fragment slot="header">
-    <AppBar class="bg-primary-500 text-white">
-      <h1 class="text-2xl font-bold">Playing Cards Collection</h1>
-      <Login />
+    <AppBar gridColumns="grid-cols-3" slotDefault="place-self-center" slotTrail="place-content-end">
+      <svelte:fragment slot="lead">
+        <h1 class="text-2xl font-bold">Playing Cards Collection</h1>
+      </svelte:fragment>
+      <svelte:fragment slot="trail">
+        <Login />
+      </svelte:fragment>
     </AppBar>
   </svelte:fragment>
+
   <svelte:fragment slot="sidebarLeft">
-    <AppRail class="p-4 bg-primary-500 text-white">
-      <AppRailTile tag="a" href="/" class="text-xl">
+    <AppRail selected={0}>
+      <AppRailTile label="Home" tag="a" href="/">
         <svelte:fragment slot="lead">
-          <svg viewBox="0 0 20 20" class="w-8 h-8 fill-current"
-            ><path
-              d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"
-            ></path></svg
-          >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
         </svelte:fragment>
-        Home
       </AppRailTile>
-      <AppRailTile tag="a" href="/" class="text-xl">
+      <AppRailTile label="My NFTs" tag="a" href="/my-nfts">
         <svelte:fragment slot="lead">
-          <svg viewBox="0 0 20 20" class="w-8 h-8 fill-current"
-            ><path
-              d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"
-            ></path></svg
-          >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
         </svelte:fragment>
-        My NFTs
       </AppRailTile>
-      <AppRailTile tag="a" href="/" class="text-xl">
+      <AppRailTile label="Marketplace" tag="a" href="/marketplace">
         <svelte:fragment slot="lead">
-          <svg viewBox="0 0 20 20" class="w-8 h-8 fill-current"
-            ><path
-              d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"
-            ></path></svg
-          >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
         </svelte:fragment>
-        Marketplace
       </AppRailTile>
     </AppRail>
   </svelte:fragment>
+
   <!-- (sidebarRight) -->
   <!-- (pageHeader) -->
+
   <!-- Router Slot -->
   <slot />
   <!-- ---- / ---- -->
+
   <!-- (pageFooter) -->
   <footer class="mt-8">
     <p class="text-center text-gray-500">
-      &copy; 2024 My NFT Project. All rights reserved.
+      &copy; 2024 - All rights reserved
     </p>
   </footer>
 </AppShell>

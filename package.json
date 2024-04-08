@@ -16,6 +16,7 @@
     "src/playing_cards_frontend"
   ],
   "dependencies": {
+    "@dfinity/principal": "^1.2.0",
     "@skeletonlabs/skeleton": "^2.9.0"
   },
   "devDependencies": {

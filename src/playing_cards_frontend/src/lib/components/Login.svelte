@@ -17,12 +17,6 @@
     }
   });
 
-  async function getCallerInfo() {
-    const caller = await backend.whoami();
-    console.log("Caller info:", caller);
-    console.log(principal);
-  }
-
   async function handleLogin() {
     const identityProvider =
       process.env.DFX_NETWORK === "ic"
@@ -51,21 +45,12 @@
   }
 </script>
 
-<div class="login-container">
-  {#if isLoggedIn}
-    <p>Logged in as: {principal}</p>
-    <button class="variant-fill" on:click={handleLogout}> Logout </button>
-  {:else}
-    <button class="variant-fill" on:click={handleLogin}>
-      Login with Internet Identity
-    </button>
-  {/if}
-
-  <button class="variant-fill" on:click={() => console.log(authClient)}
-    >Auth Info</button
-  >
-
-  <button class="btn variant-filled" on:click={getCallerInfo}>
-    Get Caller Info
+{#if isLoggedIn}
+  <button class="btn variant-filled-primary" on:click={handleLogout}>
+    Logout
   </button>
-</div>
+{:else}
+  <button class="btn variant-filled-primary" on:click={handleLogin}>
+    Login with Internet Identity
+  </button>
+{/if}

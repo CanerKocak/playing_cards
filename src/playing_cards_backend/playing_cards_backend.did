@@ -1,3 +1,4 @@
+type Account = record { owner : principal; subaccount : opt blob };
 type ConstrainedError = variant { Unauthorized };
 type Error = variant {
   InsufficientPrepaidBalance;
@@ -52,45 +53,49 @@ type Nft = record {
   approved : opt principal;
 };
 type Result = variant { Ok : nat; Err : Error };
-type Result_1 = variant { Ok; Err : Error };
-type Result_2 = variant { Ok : MintResult; Err : ConstrainedError };
-type Result_3 = variant { Ok : principal; Err : Error };
-type Result_4 = variant { Ok : nat; Err : text };
+type Result_1 = variant { Ok : nat; Err : text };
+type Result_2 = variant { Ok; Err : Error };
+type Result_3 = variant { Ok : MintResult; Err : ConstrainedError };
+type Result_4 = variant { Ok : principal; Err : Error };
 type SaleListing = record {
   token_id : nat64;
   seller : principal;
   price : nat64;
 };
+type TransferArgs = record { to_account : Account; amount : nat };
 service : (InitArgs) -> {
   __get_candid_interface_tmp_hack : () -> (text) query;
   approveDip721 : (principal, nat64) -> (Result);
+  approve_allowance : (nat) -> (Result_1);
   balanceOfDip721 : (principal) -> (nat64) query;
   burnDip721 : (nat64) -> (Result);
-  buy_nft : (nat64) -> (Result);
-  edit_nft_content : (nat64, blob) -> (Result);
   isApprovedForAllDip721 : (principal) -> (bool) query;
   is_custodian : (principal) -> (bool) query;
   listAllNftsFull : () -> (vec Nft) query;
-  list_nft_for_sale : (nat64, nat64) -> (Result_1);
+  list_nft_for_sale : (nat64, nat64) -> (Result_2);
   list_sale_listings : () -> (vec SaleListing) query;
-  mintDip721 : (principal, vec MetadataPart, blob) -> (Result_2);
+  mintDip721 : (principal, vec MetadataPart, blob) -> (Result_3);
   nameDip721 : () -> (text) query;
-  ownerOfDip721 : (nat64) -> (Result_3) query;
+  ownerOfDip721 : (nat64) -> (Result_4) query;
   remove_nft_from_sale : (nat64) -> (Result);
   safeTransferFromDip721 : (principal, principal, nat64) -> (Result);
   safeTransferFromNotifyDip721 : (principal, principal, nat64, blob) -> (
       Result,
     );
   setApprovalForAllDip721 : (principal, bool) -> (Result);
-  set_custodian : (principal, bool) -> (Result_1);
-  set_logo : (opt LogoResult) -> (Result_1);
-  set_name : (text) -> (Result_1);
-  set_symbol : (text) -> (Result_1);
+  set_custodian : (principal, bool) -> (Result_2);
+  set_logo : (opt LogoResult) -> (Result_2);
+  set_name : (text) -> (Result_2);
+  set_symbol : (text) -> (Result_2);
   supportedInterfacesDip721 : () -> (vec InterfaceId) query;
   symbolDip721 : () -> (text) query;
   totalSupplyDip721 : () -> (nat64) query;
   transferFromDip721 : (principal, principal, nat64) -> (Result);
   transferFromNotifyDip721 : (principal, principal, nat64, blob) -> (Result);
-  user_balance : () -> (Result_4);
+  transfer_from_caller : (principal, TransferArgs) -> (Result_1);
+  transfer_from_canister : (TransferArgs) -> (Result_1);
+  transfer_from_owner : (principal, nat) -> (Result_1);
+  user_balance : () -> (Result_1);
   whoami : () -> (principal) query;
+  whoami_string : () -> (text) query;
 }

@@ -43,6 +43,8 @@
 #   }
 # })" --specified-id rh2pm-ryaaa-aaaan-qeniq-cai
 
+
+
 dfx deploy windoge --argument "(variant {Init = 
   record {
        token_symbol = \"exe\";
@@ -61,4 +63,3 @@ dfx deploy windoge --argument "(variant {Init =
    }
   })" --specified-id rh2pm-ryaaa-aaaan-qeniq-cai
 
-dfx deploy

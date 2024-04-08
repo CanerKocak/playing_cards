@@ -22,3 +22,7 @@ dfx canister call windoge icrc1_transfer "(record {
                     to= record {owner = principal \"$principal\"; subaccount=null;};
                     amount = $amount;
                 })"
+
+
+# allow funding to the canister id
+dfx canister call windoge icrc1_balance_of "(record {owner = principal \"$principal\"; subaccount=null;})"

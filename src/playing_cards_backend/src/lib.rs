@@ -3,7 +3,6 @@
 #[macro_use]
 extern crate ic_cdk_macros;
 extern crate serde;
-
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -22,7 +21,8 @@ use ic_cdk::{
 use ic_certified_map::Hash;
 use include_base64::include_base64;
 
-mod icrc1;
+use icrc_ledger_types::icrc1::account::Account;
+use icrc_ledger_types::icrc1::transfer::TransferArg;
 
 mod http;
 
@@ -33,34 +33,6 @@ thread_local! {
 }
 
 type Tokens = u64;
-
-#[derive(CandidType, Deserialize)]
-struct Account {
-    owner: Principal,
-    subaccount: Option<Vec<u8>>,
-}
-
-#[derive(CandidType, Deserialize)]
-struct TransferArg {
-    from_subaccount: Option<Vec<u8>>,
-    to: Account,
-    amount: Tokens,
-    fee: Option<Tokens>,
-    memo: Option<Vec<u8>>,
-    created_at_time: Option<u64>,
-}
-
-#[derive(CandidType, Deserialize)]
-enum TransferError {
-    BadFee { expected_fee: Tokens },
-    BadBurn { min_burn_amount: Tokens },
-    InsufficientFunds { balance: Tokens },
-    TooOld,
-    CreatedInFuture { ledger_time: u64 },
-    TemporarilyUnavailable,
-    Duplicate { duplicate_of: u64 },
-    GenericError { error_code: u64, message: String },
-}
 
 // type TransferResult = Result<u64, TransferError>;
 
@@ -758,117 +730,198 @@ struct BuyNftArgs {
     amount: Tokens,
 }
 
-// Principal::from_text("rh2pm-ryaaa-aaaan-qeniq-cai").unwrap()
-
-// ----------------------
-// Buy NFT
-// ----------------------
-
-#[update]
-async fn user_balance() -> Result<Nat, String> {
-    icrc1::icrc1_balance_of(icrc1::BalanceArgs {
-        owner: api::caller(),
-    })
-    .await
-    .map(|(balance,)| balance)
-    .map_err(|(code, msg)| {
-        format!(
-            "Failed to get balance. Code: {:?}, Message: {:?}",
-            code, msg
-        )
-    })
-}
-
-#[update]
-async fn buy_nft(token_id: u64) -> Result {
-    let sale_listing = STATE.with(|state| state.borrow().sale_listings.get(&token_id).cloned());
-
-    let sale_listing = sale_listing.ok_or(Error::NFTNotForSale)?;
-    let buyer = api::caller();
-    let seller = sale_listing.seller;
-    let price = sale_listing.price;
-
-    let _ = icrc1::icrc1_transfer(icrc1::TransferArgs {
-        to: seller,
-        amount: Nat::from(price),
-        fee: None,
-        memo: None,
-        created_at_time: None,
-    })
-    .await
-    .map_err(|e| Error::TransferFailed(format!("{:?}", e)))?;
-    let _ = Ok::<(), Error>(());
-
-    STATE.with(|state| {
-        let mut state = state.borrow_mut();
-        safe_transfer_from(api::id(), buyer, token_id)?;
-        state.sale_listings.remove(&token_id);
-        Ok(state.next_txid())
-    })
-}
-
-// ----------------------
-// Query Sale Listings
-// ----------------------
 #[query]
 fn list_sale_listings() -> Vec<SaleListing> {
     STATE.with(|state| state.borrow().sale_listings.values().cloned().collect())
 }
 
-// ----------------------
-// Edit NFT Content
-// ----------------------
-#[update]
-async fn edit_nft_content(token_id: u64, new_content: Vec<u8>) -> Result {
-    let user = api::caller();
-    let balance = icrc1::icrc1_balance_of(icrc1::BalanceArgs { owner: user })
-        .await
-        .map(|(balance,)| balance)
-        .map_err(|_| Error::BalanceRetrievalFailed)?;
-
-    let owner = owner_of(token_id).map_err(|_| Error::InvalidTokenId)?;
-    if owner != user {
-        return Err(Error::Unauthorized);
-    }
-
-    if balance < Nat::from(51u32) {
-        return Err(Error::InsufficientBalance);
-    }
-
-    let _ = icrc1::icrc1_transfer(icrc1::TransferArgs {
-        to: api::id(),
-        amount: Nat::from(51u32),
-        fee: None,
-        memo: None,
-        created_at_time: None,
-    })
-    .await
-    .map_err(|e| Error::TransferFailed(format!("{:?}", e)))?;
-    let _ = Ok::<(), Error>(());
-
-    STATE.with(|state| {
-        let mut state = state.borrow_mut();
-        let nft = state
-            .nfts
-            .get_mut(usize::try_from(token_id)?)
-            .ok_or(Error::InvalidTokenId)?;
-        if nft.owner != user {
-            Err(Error::Unauthorized)
-        } else {
-            nft.content = new_content;
-            Ok(state.next_txid())
-        }
-    })
-}
-
-// whoami
 #[query]
 fn whoami() -> Principal {
     api::caller()
 }
 
+#[query]
+fn whoami_string() -> String {
+    api::caller().to_string()
+}
+
+use icrc_ledger_types::icrc1::transfer::{BlockIndex, NumTokens, TransferError};
+use serde::Serialize;
+
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
+pub struct TransferArgs {
+    amount: NumTokens,
+    to_account: Account,
+}
+
+// ----------------------
+// windoge98 EXE transfer
+// ----------------------
+
+#[update]
+async fn transfer_from_canister(args: TransferArgs) -> Result<BlockIndex, String> {
+    ic_cdk::println!(
+        "Transferring {} tokens to account {}",
+        &args.amount,
+        &args.to_account,
+    );
+
+    let transfer_args: TransferArg = TransferArg {
+        memo: None,
+        amount: args.amount,
+        from_subaccount: None,
+        fee: None,
+        to: args.to_account,
+        created_at_time: None,
+    };
+
+    ic_cdk::call::<(TransferArg,), (Result<BlockIndex, TransferError>,)>(
+        Principal::from_text("rh2pm-ryaaa-aaaan-qeniq-cai")
+            .expect("Could not decode the principal."),
+        "icrc1_transfer",
+        (transfer_args,),
+    )
+    .await
+    .map_err(|e| format!("failed to call ledger: {:?}", e))?
+    .0
+    .map_err(|e| format!("ledger transfer error {:?}", e))
+}
+
+#[derive(CandidType, Deserialize)]
+struct RecordAccount {
+    owner: Principal,
+    subaccount: Option<Vec<u8>>,
+}
+use icrc_ledger_types::icrc2::transfer_from::{TransferFromArgs, TransferFromError};
+type TransferFromResult = Result<BlockIndex, TransferFromError>;
+
+#[update]
+async fn transfer_from_caller(
+    caller: Principal, // Add the caller principal as an argument
+    args: TransferArgs,
+) -> Result<BlockIndex, String> {
+    ic_cdk::println!(
+        "Transferring {} tokens from caller {:?} to account {:?}",
+        args.amount,
+        caller, // Use the provided caller principal
+        args.to_account.owner,
+    );
+
+    let from_account = Account {
+        owner: caller, // Use the provided caller principal
+        subaccount: None,
+    };
+
+    let transfer_from_arg = TransferFromArgs {
+        spender_subaccount: None,
+        from: from_account,
+        to: args.to_account,
+        amount: args.amount,
+        fee: None,
+        memo: None,
+        created_at_time: None,
+    };
+
+    call::call::<(TransferFromArgs,), (TransferFromResult,)>(
+        Principal::from_text("rh2pm-ryaaa-aaaan-qeniq-cai")
+            .expect("Could not decode the principal."),
+        "icrc2_transfer_from",
+        (transfer_from_arg,),
+    )
+    .await
+    .map_err(|e| format!("failed to call ledger: {:?}", e))?
+    .0
+    .map_err(|e| format!("ledger transfer error {:?}", e))
+}
+
+/// make a function that first sets allowance and then transfers
+/// the tokens
+
+#[derive(CandidType, Deserialize)]
+pub struct BalanceArgs {
+    pub owner: Principal,
+}
+
+#[update]
+async fn user_balance() -> Result<Nat, String> {
+    let balance_args = BalanceArgs {
+        owner: api::caller(),
+    };
+
+    let principal = Principal::from_text("rh2pm-ryaaa-aaaan-qeniq-cai").unwrap();
+    let method = "icrc1_balance_of";
+
+    call::call(principal, method, (balance_args,))
+        .await
+        .map(|(balance,)| balance)
+        .map_err(|(code, msg)| {
+            format!(
+                "Failed to get balance. Code: {:?}, Message: {:?}",
+                code, msg
+            )
+        })
+}
+
+use icrc_ledger_types::icrc2::approve::{ApproveArgs, ApproveError};
+#[update]
+async fn approve_allowance(amount: NumTokens) -> Result<BlockIndex, String> {
+    let approve_args = ApproveArgs {
+        from_subaccount: None,
+        spender: Account {
+            owner: api::caller(),
+            subaccount: None,
+        },
+        amount,
+        expected_allowance: None,
+        expires_at: None,
+        fee: None,
+        memo: None,
+        created_at_time: None,
+    };
+
+    call::call::<(ApproveArgs,), (Result<BlockIndex, ApproveError>,)>(
+        Principal::from_text("rh2pm-ryaaa-aaaan-qeniq-cai")
+            .expect("Could not decode the principal."),
+        "icrc2_approve",
+        (approve_args,),
+    )
+    .await
+    .map_err(|e| format!("failed to call ledger: {:?}", e))?
+    .0
+    .map_err(|e| format!("ledger approve error {:?}", e))
+}
+
+#[update]
+async fn transfer_from_owner(to: Principal, amount: NumTokens) -> Result<BlockIndex, String> {
+    let from = api::caller();
+    let transfer_from_args = TransferFromArgs {
+        from: Account {
+            owner: from,
+            subaccount: None,
+        },
+        to: Account {
+            owner: to,
+            subaccount: None,
+        },
+        amount,
+        fee: None,
+        memo: None,
+        created_at_time: None,
+        spender_subaccount: None,
+    };
+
+    call::call::<(TransferFromArgs,), (Result<BlockIndex, TransferFromError>,)>(
+        Principal::from_text("rh2pm-ryaaa-aaaan-qeniq-cai")
+            .expect("Could not decode the principal."),
+        "icrc2_transfer_from",
+        (transfer_from_args,),
+    )
+    .await
+    .map_err(|e| format!("failed to call ledger: {:?}", e))?
+    .0
+    .map_err(|e| format!("ledger transfer_from error {:?}", e))
+}
 // ----------------------
 // candid interface
 // ----------------------
-
 ic_cdk::export_candid!();
