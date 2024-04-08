@@ -1,9 +1,9 @@
 <script>
   import "../index.scss";
-  import { backend } from "$lib/canisters/canisters";
-  import { onMount } from "svelte";
+  import { cardBackend, ledgerBackend } from "$lib/canisters/canisters";
   import { getModalStore, getToastStore } from "@skeletonlabs/skeleton";
   import { Principal } from "@dfinity/principal";
+  import { principal, loggedIn } from "$lib/stores/auth";
 
   const modalStore = getModalStore();
   const toastStore = getToastStore();
@@ -12,26 +12,33 @@
   let formattedBalance = null;
   let recipient = "";
   let amount = 0;
-  let isValidPrincipal = false;
-  let userPrincipal = "";
-
-  onMount(() => {
-    setTimeout(fetchUserBalance, 100); // allow internet identity to load
-  });
+  let isValidPrincipal = false; 
 
   $: {
     formattedBalance = formatBalance(balance);
     isValidPrincipal = checkPrincipalValidity(recipient);
   }
 
+  loggedIn.subscribe((value) => {
+    if (value) {
+      fetchUserBalance();
+    }
+  });
+
+  principal.subscribe((value) => {
+    $principal = value;
+  });
+
   async function fetchUserBalance() {
+    if ($principal === "") {
+      return;
+    }
     showSuccessToast("Fetching user balance...");
     try {
-      const result = await backend.user_balance();
+      const result = await cardBackend.user_balance();
       if ("Ok" in result) {
         balance = result.Ok;
         console.log("User balance:11", balance);
-        fetchUserPrincipal();
         showSuccessToast("User balance fetched successfully!");
         
       } else {
@@ -44,16 +51,10 @@
     }
   }
 
-  async function fetchUserPrincipal() {
-    let Principal = await backend.whoami_string();
-    userPrincipal = Principal;
-  }
-
-
   async function sendTokens() {
     showSuccessToast("Sending tokens...");
     try {
-      const response = await backend.transfer_from_caller({
+      const response = await ledgerBackend.icrc1_transfer({
         to_account: {
           owner: Principal.fromText(recipient),
           subaccount: [],
@@ -107,19 +108,10 @@
 
   function formatBalance(balance) {
     if (balance === null) return "Loading...";
-
     let balanceStr = balance.toString();
-
-    // Pad the string with leading zeros to ensure it has at least 9 characters
-    // This accounts for 8 decimal places plus at least one digit before the decimal point
     balanceStr = balanceStr.padStart(9, "0");
-
-    // Insert the decimal point eight places from the end
     let formattedBalance = balanceStr.slice(0, -8) + "." + balanceStr.slice(-8);
-
-    // Remove trailing zeros after the decimal point to clean up the display
     formattedBalance = parseFloat(formattedBalance).toString();
-
     return formattedBalance;
 }
   function checkPrincipalValidity(principal) {
@@ -132,17 +124,17 @@
   }
 
   async function copyToClipboard() {
-    if (userPrincipal === "") {
+    if ($principal === "") {
       showErrorToast("Error: User Principal is empty");
       return;
     }
 
-    await navigator.clipboard.writeText(userPrincipal);
+    await navigator.clipboard.writeText($principal);
 
     const userPrincipalShortened =
-      userPrincipal.length > 10
-        ? `${userPrincipal.slice(0, 10)}...`
-        : userPrincipal;
+    $principal.length > 10
+        ? `${$principal.slice(0, 10)}...`
+        : $principal;
       
     showSuccessToast(`Principal copied to clipboard: ${userPrincipalShortened}`);
   }
@@ -153,19 +145,23 @@
     <h1 class="text-4xl font-bold">Wallet Dashboard</h1>
   </header>
 
+
   <div class="card p-4 mb-8">
     <h2 class="text-2xl font-semibold mb-4">Account Balance</h2>
-    <p class="text-4xl">{formattedBalance || "Loading..."} EXE</p>
-    <div class="mt-4 flex items-center">
-      <p class="text-lg">Your Principal: {userPrincipal}</p>
-    </div>
-    <button class="btn variant-filled-primary mt-4 mr-2" on:click={fetchUserBalance}>
-      Refresh Balance
-    </button>
-
-    <button class="btn variant-filled-primary mt-4" on:click={copyToClipboard}>
-      Copy Principal
-    </button>
+    {#if $loggedIn}
+      <p class="text-4xl">{formattedBalance || "Loading..."} EXE</p>
+      <div class="mt-4 flex items-center">
+        <p class="text-lg">Your Principal: {$principal}</p>
+      </div>
+      <button class="btn variant-filled-primary mt-4 mr-2" on:click={fetchUserBalance}>
+        Refresh Balance
+      </button>
+      <button class="btn variant-filled-primary mt-4" on:click={copyToClipboard}>
+        Copy Principal
+      </button>
+    {:else}
+      <p class="text-lg font-semibold">Please login to view your balance.</p>
+    {/if}
   </div>
 
   <div class="card p-4">

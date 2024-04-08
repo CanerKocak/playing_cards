@@ -1,34 +1,34 @@
 <script>
   import { AuthClient } from "@dfinity/auth-client";
   import { onMount } from "svelte";
-  import { backend, updateBackend } from "$lib/canisters/canisters";
+  import { updateBackend } from "$lib/canisters/canisters";
+  import { principal, loggedIn } from "$lib/stores/auth";
 
   let authClient;
-  let isLoggedIn = false;
-  let principal = "";
 
   onMount(async () => {
     authClient = await AuthClient.create();
-    isLoggedIn = await authClient.isAuthenticated();
-
+    const isLoggedIn = await authClient.isAuthenticated();
     if (isLoggedIn) {
-      principal = authClient.getIdentity().getPrincipal().toText();
+      principal.set(authClient.getIdentity().getPrincipal().toText());
+      loggedIn.set(true);
       updateBackend(authClient.getIdentity());
+      fetchUserBalance();
     }
   });
 
   async function handleLogin() {
-    const identityProvider =
-      process.env.DFX_NETWORK === "ic"
-        ? "https://identity.ic0.app/#authorize"
-        : `http://${process.env.CANISTER_ID_INTERNET_IDENTITY}.localhost:4943/`;
+    const identityProvider = process.env.DFX_NETWORK === "ic"
+      ? "https://identity.ic0.app/#authorize"
+      : `http://${process.env.CANISTER_ID_INTERNET_IDENTITY}.localhost:4943/`;
+
     await authClient.login({
       identityProvider,
       onSuccess: async () => {
-        isLoggedIn = true;
         const identity = await authClient.getIdentity();
-        principal = identity.getPrincipal().toText();
+        principal.set(identity.getPrincipal().toText());
         updateBackend(authClient.getIdentity());
+        loggedIn.set(true);
       },
       onError: (error) => {
         console.error("Login error:", error);
@@ -38,14 +38,13 @@
 
   async function handleLogout() {
     await authClient.logout();
-    updateBackend(); // Reset the backend
-    isLoggedIn = false;
-    console.log("Logged out");
-    principal = "";
+    updateBackend();
+    principal.set("");
+    loggedIn.set(false);
   }
 </script>
 
-{#if isLoggedIn}
+{#if $loggedIn}
   <button class="btn variant-filled-primary" on:click={handleLogout}>
     Logout
   </button>

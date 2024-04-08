@@ -1,4 +1,5 @@
-import { createActor, canisterId } from "declarations/playing_cards_backend";
+import { createActor as createCardActor, canisterId as cardCanisterId } from "declarations/playing_cards_backend";
+import { createActor as createLedgerActor } from "declarations/icrc1_ledger_canister";
 import { building } from "$app/environment";
 
 function dummyActor() {
@@ -14,10 +15,12 @@ function dummyActor() {
 
 const buildingOrTesting = building || process.env.NODE_ENV === "test";
 
-let backend = buildingOrTesting ? dummyActor() : createActor(canisterId);
+let cardBackend = buildingOrTesting ? dummyActor() : createCardActor(cardCanisterId);
+let ledgerBackend = buildingOrTesting ? dummyActor() : createLedgerActor("rh2pm-ryaaa-aaaan-qeniq-cai");
 
 export function updateBackend(identity) {
-  backend = createActor(canisterId, { agentOptions: { identity } });
+  cardBackend = createCardActor(cardCanisterId, { agentOptions: { identity } });
+  ledgerBackend = createLedgerActor("rh2pm-ryaaa-aaaan-qeniq-cai", { agentOptions: { identity } });
 }
 
-export { backend };
+export { cardBackend, ledgerBackend };
