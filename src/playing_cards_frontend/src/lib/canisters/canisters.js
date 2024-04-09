@@ -19,6 +19,7 @@ let cardBackend = buildingOrTesting ? dummyActor() : createCardActor(cardCaniste
 let ledgerBackend = buildingOrTesting ? dummyActor() : createLedgerActor("rh2pm-ryaaa-aaaan-qeniq-cai");
 
 export function updateBackend(identity) {
+  // cardBackend = createCardActor(cardCanisterId, { agentOptions: { identity } });
   cardBackend = createCardActor(cardCanisterId, { agentOptions: { identity } });
   ledgerBackend = createLedgerActor("rh2pm-ryaaa-aaaan-qeniq-cai", { agentOptions: { identity } });
 }

@@ -1,23 +1,22 @@
 <script>
+  export const prerender = true;
   import "../index.scss";
   import { cardBackend } from "$lib/canisters/canisters";
   import { onMount } from "svelte";
   import NftCard from "$lib/components/NftCard.svelte";
   import { getModalStore } from "@skeletonlabs/skeleton";
   const modalStore = getModalStore();
+  import card from "../../../../hearts 4.png";
 
   import { getToastStore } from "@skeletonlabs/skeleton";
   const toastStore = getToastStore();
 
   let nfts = [];
-  let mintPrincipal = "";
-  let mintMetadata = [];
-  let mintContent = new Uint8Array();
 
   onMount(fetchNFTs);
 
   async function fetchNFTs() {
-    nfts = await cardBackend.listAllNftsFull();
+    nfts = await cardBackend.list_all_nfts_full();
   }
 
   async function handleNftSell(event) {
@@ -72,7 +71,7 @@
   async function listNftForSale(nft, sellPrice) {
     const sellTokenId = nft.id;
     console.log("Token ID:", sellTokenId);
-    const response = await backend.list_nft_for_sale(sellTokenId, sellPrice);
+    const response = await cardBackend.listAllNftsFull(sellTokenId, sellPrice);
     if (response.Ok) {
       console.log("NFT listed for sale successfully:", response.Ok);
       await fetchNFTs();
@@ -96,15 +95,64 @@
       toastStore.trigger(errorToast);
     }
   }
+
+  async function handleBurn(event) {
+    const nft = event.detail.nft;
+    const response = await cardBackend.burnDip721(0);
+    if (response.Ok) {
+      console.log("NFT burned successfully:", response.Ok);
+      await fetchNFTs();
+
+      // Show success toast
+      const successToast = {
+        message: "NFT burned successfully!",
+        background: "variant-filled-primary",
+        timeout: 3000,
+      };
+      toastStore.trigger(successToast);
+    } else {
+      console.error("Error burning NFT:", response.Err);
+
+      // Show error toast
+      const errorToast = {
+        message: "Error burning NFT. Please try again.",
+        background: "variant-filled-error",
+        timeout: 5000,
+      };
+      toastStore.trigger(errorToast);
+    }
+  }
 </script>
 
 <div class="container p-4">
   <main>
-    <div class="grid grid-cols-4 gap-4">
+    <div class="grid">
       {#each nfts as nft}
         <div class="nft-card">
-          <NftCard {nft} on:sell={handleNftSell} />
+          <div class="card" style="width: 18rem;">
+            <section class="p-4 flex justify-center">
+              <div
+                style="width: 250px; height: 250px; background-color: #f0f0f0;"
+              ></div>
+            </section>
+            <header class="card-header">{nft.name}</header>
+            <footer class="card-footer">{nft.description}</footer>
+            <img src={card} alt={nft.name} />
+            <button class="btn btn-primary" on:click={handleBurn}>List for Sale</button>
+            <div class="card-body">
+              <button class="btn btn-primary">List for Sale</button>
+            </div>
+          </div>
         </div>
       {/each}
     </div>
+  </main>
 </div>
+
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+  }
+</style>

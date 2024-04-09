@@ -3,7 +3,6 @@
   import { onMount } from "svelte";
   import { updateBackend } from "$lib/canisters/canisters";
   import { principal, loggedIn } from "$lib/stores/auth";
-
   let authClient;
 
   onMount(async () => {

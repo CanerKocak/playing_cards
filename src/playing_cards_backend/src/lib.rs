@@ -16,7 +16,7 @@ use candid::{CandidType, Deserialize, Encode, Nat, Principal};
 use ic_cdk::api::call::ArgDecoderConfig;
 use ic_cdk::{
     api::{self, call},
-    storage, trap,
+    storage,
 };
 use ic_certified_map::Hash;
 use include_base64::include_base64;
@@ -25,6 +25,9 @@ use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc1::transfer::TransferArg;
 
 mod http;
+mod mint_default_cards;
+
+// use mint_default_cards::mint_all_default_cards;
 
 const MGMT: Principal = Principal::from_slice(&[]);
 
@@ -90,32 +93,6 @@ fn create_metadata(
     }]
 }
 
-fn mint_default_cards(custodian: Principal) -> Result<(), ConstrainedError> {
-    let cards = vec![include_bytes!("default_cards/clubs 2.png")];
-    // Ensure that the byte arrays have the correct size
-    let cards: Vec<&[u8]> = cards.iter().map(|card| &card[..9716]).collect();
-
-    for card in cards {
-        let image_data = card.to_vec();
-        let metadata = create_metadata(
-            MetadataPurpose::Rendered,
-            "image/png",
-            4,
-            image_data.clone(),
-        );
-
-        match mint(custodian, metadata, image_data) {
-            Ok(_) => println!("Card minted successfully"),
-            Err(e) => {
-                println!("Failed to mint card: {:?}", e);
-                return Err(e);
-            }
-        }
-    }
-
-    Ok(())
-}
-
 #[init]
 fn init(args: InitArgs) {
     STATE.with(|state| {
@@ -126,13 +103,32 @@ fn init(args: InitArgs) {
         state.name = args.name;
         state.symbol = args.symbol;
         state.logo = args.logo;
-
-        // Mint default cards to this canister
-        if let Err(e) = mint_default_cards(api::id()) {
-            trap(&format!("Failed to mint default cards: {:?}", e));
-        }
     });
 }
+
+// #[update]
+// fn mint_defaults() -> Result<(), ConstrainedError> {
+//     mint_all_default_cards(api::id())
+//         // list each token from id 0 to 54 for sale
+//         .and_then(|_| {
+//             for i in 0..55 {
+//                 list_nft_for_sale1(i, 1).map_err(|_| ConstrainedError::Unauthorized)?;
+//             }
+//             Ok(())
+//         })
+// }
+
+// function to remove all nfts
+// #[update]
+// fn remove_all_nfts() -> Result<(), ConstrainedError> {
+//     STATE.with(|state| {
+//         let mut state = state.borrow_mut();
+//         state.nfts.clear();
+//         state.sale_listings.clear();
+//     });
+//     Ok(())
+// }
+
 #[derive(CandidType, Deserialize)]
 enum Error {
     Unauthorized,
@@ -657,7 +653,7 @@ fn __get_candid_interface_tmp_hack() -> String {
 // ----------------------
 // retrieve all NFTs
 // ----------------------
-#[query(name = "listAllNftsFull")]
+#[query]
 fn list_all_nfts_full() -> Vec<Nft> {
     STATE.with(|state| state.borrow().nfts.clone())
 }
@@ -703,6 +699,32 @@ fn list_nft_for_sale(token_id: u64, price: Tokens) -> Result<(), Error> {
     })
 }
 
+// fn list_nft_for_sale1(token_id: u64, price: Tokens) -> Result<(), Error> {
+//     let caller = api::caller();
+
+//     STATE.with(|state| {
+//         let mut state = state.borrow_mut();
+
+//         let nft = state
+//             .nfts
+//             .get_mut(usize::try_from(token_id)?)
+//             .ok_or(Error::InvalidTokenId)?;
+
+//         // transfer the NFT to the canister
+//         nft.owner = api::id();
+
+//         state.sale_listings.insert(
+//             token_id,
+//             SaleListing {
+//                 token_id,
+//                 seller: caller,
+//                 price,
+//             },
+//         );
+//         Ok(())
+//     })
+// }
+
 #[update]
 fn remove_sale_listing(token_id: u64) -> Result<(), Error> {
     // from state get sale_listing and the nft
@@ -724,6 +746,8 @@ fn remove_sale_listing(token_id: u64) -> Result<(), Error> {
         }
 
         nft.owner = sale_listing.seller;
+
+        state.sale_listings.remove(&token_id);
 
         Ok(())
     })

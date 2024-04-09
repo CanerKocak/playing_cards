@@ -56,7 +56,8 @@ type Result = variant { Ok : nat; Err : Error };
 type Result_1 = variant { Ok : nat; Err : text };
 type Result_2 = variant { Ok; Err : Error };
 type Result_3 = variant { Ok : MintResult; Err : ConstrainedError };
-type Result_4 = variant { Ok : principal; Err : Error };
+type Result_4 = variant { Ok; Err : ConstrainedError };
+type Result_5 = variant { Ok : principal; Err : Error };
 type SaleListing = record {
   token_id : nat64;
   seller : principal;
@@ -71,13 +72,14 @@ service : (InitArgs) -> {
   burnDip721 : (nat64) -> (Result);
   isApprovedForAllDip721 : (principal) -> (bool) query;
   is_custodian : (principal) -> (bool) query;
-  listAllNftsFull : () -> (vec Nft) query;
+  list_all_nfts_full : () -> (vec Nft) query;
   list_nft_for_sale : (nat64, nat64) -> (Result_2);
   list_sale_listings : () -> (vec SaleListing) query;
   mintDip721 : (principal, vec MetadataPart, blob) -> (Result_3);
+  mint_defaults : () -> (Result_4);
   nameDip721 : () -> (text) query;
-  ownerOfDip721 : (nat64) -> (Result_4) query;
-  remove_nft_from_sale : (nat64) -> (Result);
+  ownerOfDip721 : (nat64) -> (Result_5) query;
+  remove_sale_listing : (nat64) -> (Result_2);
   safeTransferFromDip721 : (principal, principal, nat64) -> (Result);
   safeTransferFromNotifyDip721 : (principal, principal, nat64, blob) -> (
       Result,

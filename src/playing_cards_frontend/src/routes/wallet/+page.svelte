@@ -5,7 +5,7 @@
   import { Principal } from "@dfinity/principal";
   import { principal, loggedIn } from "$lib/stores/auth";
   import { onMount } from "svelte";
-  import { clipboard } from '@skeletonlabs/skeleton';
+  import { clipboard } from "@skeletonlabs/skeleton";
 
   const modalStore = getModalStore();
   const toastStore = getToastStore();
@@ -33,25 +33,25 @@
   });
 
   async function fetchUserBalance() {
-  if (principleValue === "") {
-    return;
-  }
-
-  try {
-    const principal = Principal.fromText(principleValue);
-    if (!principal) {
-      console.error("Invalid principal:", principleValue);
-      showErrorToast("Invalid user. Please check your input.");
+    if (principleValue === "") {
       return;
     }
-		balance = await ledgerBackend.icrc1_balance_of({
-			owner: Principal.fromText(principleValue),
-			subaccount: [],
-		});
-  } catch (error) {
-    showErrorToast("Failed to fetch user balance. Please try again.");
+
+    try {
+      const principal = Principal.fromText(principleValue);
+      if (!principal) {
+        console.error("Invalid principal:", principleValue);
+        showErrorToast("Invalid user. Please check your input.");
+        return;
+      }
+      balance = await ledgerBackend.icrc1_balance_of({
+        owner: Principal.fromText(principleValue),
+        subaccount: [],
+      });
+    } catch (error) {
+      showErrorToast("Failed to fetch user balance. Please try again.");
+    }
   }
-}
 
   async function sendTokens() {
     showSuccessToast("Sending tokens...");
@@ -133,10 +133,10 @@
       return;
     }
 
-    clipboard.writeText(principleValue);
-
     const userPrincipalShortened =
-    principleValue.length > 10 ? `${principleValue.slice(0, 10)}...` : principleValue;
+      principleValue.length > 10
+        ? `${principleValue.slice(0, 10)}...`
+        : principleValue;
     showSuccessToast(
       `Principal copied to clipboard: ${userPrincipalShortened}`
     );
@@ -164,6 +164,7 @@
       <button
         class="btn variant-filled-primary mt-4"
         on:click={copyToClipboard}
+        use:clipboard={{ principleValue }}
       >
         Copy Principal
       </button>
@@ -208,14 +209,15 @@
             type="number"
             id="amount"
             bind:value={amount}
-            min="0"
+            min="0.01"
             step="0.00000001"
             required
           />
         </div>
       </div>
 
-      <button type="submit" class="btn variant-filled">Send</button>
+      <button type="submit" class="btn variant-filled" disabled={!isValidPrincipal}>
+        Send EXE
     </form>
   </div>
 </div>
