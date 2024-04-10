@@ -9,15 +9,17 @@
   import { goto } from '$app/navigation';
   import { writable } from 'svelte/store';
 
-  // import wallet svg
+  // Import wallet svg
   import wallet from "../../../../wallet.svg";
   import deck from "../../../../deck.svg";
   import marketplace from "../../../../marketplace.svg";
 
+  // windoge98 logo
+  import logo from "../../../../windoge98_logo.png";
+
   initializeStores();
 
-  let selected = writable(0);
-
+  let currentTile = writable(0);
 </script>
 
 <Toast />
@@ -27,7 +29,10 @@
   <svelte:fragment slot="header">
     <AppBar gridColumns="grid-cols-3" slotDefault="place-self-center" slotTrail="place-content-end">
       <svelte:fragment slot="lead">
-        <h1 class="text-2xl font-bold">Playing Cards Collection</h1>
+        <div class="flex items-center">
+          <img src={logo} alt="Windoge98 logo" class="w-24 h-auto mr-4" />
+          <h1 class="text-3xl font-bold">Playing Cards Collection</h1>
+        </div>
       </svelte:fragment>
       <svelte:fragment slot="trail">
         <Login />
@@ -37,25 +42,23 @@
 
   <svelte:fragment slot="sidebarLeft">
     <AppRail>
-      <AppRailTile label="Deck" on:click={() => {selected.set(0); goto('/');}} class="bg-primary-500 text-white">
+      <AppRailTile bind:group={$currentTile} name="deck" value={0} title="Deck" on:click={() => goto('/')}>
         <svelte:fragment slot="lead">
-          <img src={deck} alt="Deck" />
-          <span class="text-sm">Deck</span>
+          <img src={deck} alt="Deck" class="icon" />
         </svelte:fragment>
+        <span>Deck</span>
       </AppRailTile>
-
-      <AppRailTile label="Wallet" on:click={() => {selected.set(1); goto('/wallet');}} class={$selected === 1 ? 'bg-primary-500 text-white' : 'bg-primary-200 text-black'}>
+      <AppRailTile bind:group={$currentTile} name="wallet" value={1} title="Wallet" on:click={() => goto('/wallet')}>
         <svelte:fragment slot="lead">
-          <img src={wallet} alt="Wallet" />
-          <span class="text-sm">Wallet</span>
+          <img src={wallet} alt="Wallet" class="icon" />
         </svelte:fragment>
+        <span>Wallet</span>
       </AppRailTile>
-
-      <AppRailTile label="Marketplace" on:click={() => {selected.set(2); goto('/marketplace');}} class={$selected === 2 ? 'bg-primary-500 text-white' : ''}>
+      <AppRailTile bind:group={$currentTile} name="marketplace" value={2} title="Marketplace" on:click={() => goto('/marketplace')}>
         <svelte:fragment slot="lead">
-          <img src={marketplace} alt="Marketplace" />
-          <span class="text-sm">Marketplace</span>
+          <img src={marketplace} alt="Marketplace" class="icon" />
         </svelte:fragment>
+        <span>Market</span>
       </AppRailTile>
     </AppRail>
   </svelte:fragment>
@@ -68,3 +71,11 @@
     </p>
   </footer>
 </AppShell>
+
+<style>
+  .icon {
+    width: 32px;
+    height: 32px;
+    margin-left: 24px;
+  }
+</style>

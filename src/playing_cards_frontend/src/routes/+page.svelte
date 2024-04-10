@@ -124,30 +124,23 @@
   }
 </script>
 
-<div class="container p-4">
-  <main>
-    <div class="grid">
-      {#each nfts as nft}
-        <div class="nft-card">
-          <div class="card" style="width: 18rem;">
-            <section class="p-4 flex justify-center">
-              <div
-                style="width: 250px; height: 250px; background-color: #f0f0f0;"
-              ></div>
-            </section>
-            <header class="card-header">{nft.name}</header>
-            <footer class="card-footer">{nft.description}</footer>
-            <img src={card} alt={nft.name} />
-            <button class="btn btn-primary" on:click={handleBurn}>List for Sale</button>
-            <div class="card-body">
-              <button class="btn btn-primary">List for Sale</button>
-            </div>
+<main class="container p-4">
+  <div class="grid">
+    {#each nfts as nft}
+      <div class="nft-card">
+        <div class="card" style="width: 18rem;">
+          <header class="card-header">{nft.name}</header>
+          <footer class="card-footer">{nft.description}</footer>
+          <img src={card} alt={nft.name} />
+          <button class="btn btn-primary" on:click={handleBurn}>List for Sale</button>
+          <div class="card-body">
+            <button class="btn btn-primary">List for Sale</button>
           </div>
         </div>
-      {/each}
-    </div>
-  </main>
-</div>
+      </div>
+    {/each}
+  </div>
+</main>
 
 <style>
   .grid {

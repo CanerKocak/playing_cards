@@ -106,29 +106,6 @@ fn init(args: InitArgs) {
     });
 }
 
-// #[update]
-// fn mint_defaults() -> Result<(), ConstrainedError> {
-//     mint_all_default_cards(api::id())
-//         // list each token from id 0 to 54 for sale
-//         .and_then(|_| {
-//             for i in 0..55 {
-//                 list_nft_for_sale1(i, 1).map_err(|_| ConstrainedError::Unauthorized)?;
-//             }
-//             Ok(())
-//         })
-// }
-
-// function to remove all nfts
-// #[update]
-// fn remove_all_nfts() -> Result<(), ConstrainedError> {
-//     STATE.with(|state| {
-//         let mut state = state.borrow_mut();
-//         state.nfts.clear();
-//         state.sale_listings.clear();
-//     });
-//     Ok(())
-// }
-
 #[derive(CandidType, Deserialize)]
 enum Error {
     Unauthorized,
@@ -699,32 +676,6 @@ fn list_nft_for_sale(token_id: u64, price: Tokens) -> Result<(), Error> {
     })
 }
 
-// fn list_nft_for_sale1(token_id: u64, price: Tokens) -> Result<(), Error> {
-//     let caller = api::caller();
-
-//     STATE.with(|state| {
-//         let mut state = state.borrow_mut();
-
-//         let nft = state
-//             .nfts
-//             .get_mut(usize::try_from(token_id)?)
-//             .ok_or(Error::InvalidTokenId)?;
-
-//         // transfer the NFT to the canister
-//         nft.owner = api::id();
-
-//         state.sale_listings.insert(
-//             token_id,
-//             SaleListing {
-//                 token_id,
-//                 seller: caller,
-//                 price,
-//             },
-//         );
-//         Ok(())
-//     })
-// }
-
 #[update]
 fn remove_sale_listing(token_id: u64) -> Result<(), Error> {
     // from state get sale_listing and the nft
@@ -863,9 +814,6 @@ async fn transfer_from_caller(
     .0
     .map_err(|e| format!("ledger transfer error {:?}", e))
 }
-
-/// make a function that first sets allowance and then transfers
-/// the tokens
 
 #[derive(CandidType, Deserialize)]
 pub struct BalanceArgs {

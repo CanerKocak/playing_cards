@@ -1,3 +1,4 @@
+
 <script>
   import "../../index.scss";
   import { cardBackend, ledgerBackend } from "$lib/canisters/canisters";
