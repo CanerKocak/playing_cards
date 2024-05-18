@@ -16,7 +16,7 @@
   onMount(fetchNFTs);
 
   async function fetchNFTs() {
-    nfts = await cardBackend.list_all_nfts_full();
+    nfts = await cardBackend.fetch_nfts();
   }
 
   async function handleNftSell(event) {
