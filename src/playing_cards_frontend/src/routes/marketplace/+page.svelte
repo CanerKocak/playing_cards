@@ -39,7 +39,7 @@
             <header class="card-header">{nft.name}</header>
             <footer class="card-footer">{nft.description}</footer>
             <div class="card-body">
-              <button class="btn btn-primary">List for Sale</button>
+              <button class="btn variant-filled-primary">Purchase</button>
             </div>
           </div>
         </div>

@@ -97,47 +97,40 @@
   }
 
   async function handleBurn(event) {
+    console.log(event.detail);
+  }
+
+  // pop card from nfts array locally
+  async function handleRemoveCard(event) {
     const nft = event.detail.nft;
-    const response = await cardBackend.burnDip721(0);
-    if (response.Ok) {
-      console.log("NFT burned successfully:", response.Ok);
-      await fetchNFTs();
+    nfts = nfts.filter((n) => n.id !== nft.id);
+  }
 
-      // Show success toast
-      const successToast = {
-        message: "NFT burned successfully!",
-        background: "variant-filled-primary",
-        timeout: 3000,
-      };
-      toastStore.trigger(successToast);
-    } else {
-      console.error("Error burning NFT:", response.Err);
-
-      // Show error toast
-      const errorToast = {
-        message: "Error burning NFT. Please try again.",
-        background: "variant-filled-error",
-        timeout: 5000,
-      };
-      toastStore.trigger(errorToast);
-    }
+  // handle open modal
+  async function handleOpenCard(event) {
+    const nft = event.detail.nft;
+    const modal = {
+      type: "modal",
+      title: nft.name,
+      body: NftCard,
+      props: {
+        nft,
+      },
+    };
+    modalStore.trigger(modal);
   }
 </script>
 
 <main class="container p-4">
   <div class="grid">
     {#each nfts as nft}
-      <div class="nft-card">
-        <div class="card" style="width: 18rem;">
-          <header class="card-header">{nft.name}</header>
-          <footer class="card-footer">{nft.description}</footer>
-          <img src={card} alt={nft.name} />
-          <button class="btn btn-primary" on:click={handleBurn}>List for Sale</button>
-          <div class="card-body">
-            <button class="btn btn-primary">List for Sale</button>
-          </div>
-        </div>
-      </div>
+      <NftCard
+        nft={nft}
+        on:remove={handleRemoveCard}
+        on:sell={handleNftSell}
+        on:burn={handleBurn}
+        on:open={handleOpenCard}
+      />
     {/each}
   </div>
 </main>
@@ -145,7 +138,7 @@
 <style>
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1rem;
   }
 </style>

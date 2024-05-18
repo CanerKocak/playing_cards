@@ -15,7 +15,7 @@ record{
 variant{Nat8Content=4:nat8}
 };
 }
-}}, blob\"$(echo -n "hello" | base64)\")"
+}}, blob\"$(echo -n "hello" | base64)\")" --network ic
 
 # dfx deploy windoge --argument "(variant {
 #   Init = record {

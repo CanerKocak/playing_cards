@@ -27,17 +27,21 @@
 
 <AppShell>
   <svelte:fragment slot="header">
-    <AppBar gridColumns="grid-cols-3" slotDefault="place-self-center" slotTrail="place-content-end">
-      <svelte:fragment slot="lead">
-        <div class="flex items-center">
-          <img src={logo} alt="Windoge98 logo" class="w-24 h-auto mr-4" />
-          <h1 class="text-3xl font-bold">Playing Cards Collection</h1>
+        <div class="window">
+          <div class="title-bar">
+            <div class="title-bar-text">Windoge98</div>
+            <div class="title-bar-controls">
+              <button aria-label="Close"></button>
+            </div>
+          </div>
+          <div class="flex justify-between items-center m-1">
+            <div class="flex items-center">
+              <img src={logo} alt="Windoge98 logo" class="w-20 h-auto mr-4 ml -3" />
+              <h1 class="text-3xl font-bold">Playing Cards Collection</h1>
+            </div>
+            <Login />
+          </div>
         </div>
-      </svelte:fragment>
-      <svelte:fragment slot="trail">
-        <Login />
-      </svelte:fragment>
-    </AppBar>
   </svelte:fragment>
 
   <svelte:fragment slot="sidebarLeft">

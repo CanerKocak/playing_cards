@@ -2,7 +2,7 @@
 
 // 1. Import the Skeleton plugin
 const { skeleton } = require('@skeletonlabs/tw-plugin');
-import forms from '@tailwindcss/forms';
+import { myCustomTheme } from '../themes/98style';
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -23,10 +23,10 @@ module.exports = {
 	plugins: [
 		skeleton({
 			themes: {
-				preset: [ "hamlindigo" ],
+				preset: [ "rocket" ],
+				custom: [ myCustomTheme ]
 			}
 		}),
-		forms
 	]
 		
   

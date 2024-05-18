@@ -1,4 +1,3 @@
-
 <script>
   import "../../index.scss";
   import { cardBackend, ledgerBackend } from "$lib/canisters/canisters";
@@ -7,6 +6,11 @@
   import { principal, loggedIn } from "$lib/stores/auth";
   import { onMount } from "svelte";
   import { clipboard } from "@skeletonlabs/skeleton";
+  let nfts = [];
+
+  async function fetchNFTs() {
+    nfts = await cardBackend.list_sale_listings();
+  }
 
   const modalStore = getModalStore();
   const toastStore = getToastStore();
@@ -28,6 +32,7 @@
   }
 
   onMount(async () => {
+    fetchNFTs();
     setTimeout(() => {
       fetchUserBalance();
     }, 100);
@@ -149,37 +154,47 @@
     <h1 class="text-4xl font-bold">Wallet Dashboard</h1>
   </header>
 
-  <div class="card p-4 mb-8">
-    <h2 class="text-2xl font-semibold mb-4">Account Balance</h2>
+  <div class="window mb-4">
+    <div class="title-bar">
+      <div class="title-bar-text">Account Balance</div>
+      <div class="title-bar-controls">
+        <button aria-label="Close"></button>
+      </div>
+    </div>
     {#if $loggedIn}
-      <p class="text-4xl">{formattedBalance || "Loading..."} EXE</p>
+      <p class="text-4xl p-3">{formattedBalance || "Loading..."} EXE</p>
       <div class="mt-4 flex items-center">
-        <p class="text-lg">Your Principal: {$principal}</p>
+        <p class="text-lg p-3">Your Principal: {$principal}</p>
       </div>
       <button
         class="btn variant-filled-primary mt-4 mr-2"
         on:click={fetchUserBalance}
       >
-        Refresh Balance
+        Refresh
       </button>
       <button
         class="btn variant-filled-primary mt-4"
         on:click={copyToClipboard}
         use:clipboard={{ principleValue }}
       >
-        Copy Principal
+        Copy
       </button>
     {:else}
-      <p class="text-lg font-semibold">Please login to view your balance.</p>
+      <p class="text-lg font-semibold p-3">Please login to view your balance.</p>
     {/if}
   </div>
 
-  <div class="card p-4">
-    <h2 class="text-2xl font-semibold mb-4">Send EXE</h2>
-    <form on:submit|preventDefault={sendTokens}>
+  <div class="window">
+    <div class="title-bar">
+      <div class="title-bar-text">Send EXE</div>
+      <div class="title-bar-controls">
+        <button aria-label="Close"></button>
+      </div>
+    </div>
+    <form on:submit|preventDefault={sendTokens} class="p-4">
       <!-- Recipient Address -->
       <div
-        class="input-group input-group-divider grid-cols-[1fr_auto] mb-4 relative"
+        class="input-group input-group-divider grid-cols-[1fr_auto] mb-4 mt-4 p-2 relative"
       >
         <input
           type="text"
@@ -204,7 +219,7 @@
 
       <!-- Amount of EXE -->
       <div class="mb-4">
-        <div class="input-group input-group-divider grid-cols-[auto_1fr_auto]">
+        <div class="input-group input-group-divider grid-cols-[auto_1fr_auto] p-1">
           <div class="input-group-shim">EXE</div>
           <input
             type="number"
@@ -217,8 +232,49 @@
         </div>
       </div>
 
-      <button type="submit" class="btn variant-filled" disabled={!isValidPrincipal}>
+      <button
+        type="submit"
+        class="btn variant-filled"
+        disabled={!isValidPrincipal}
+      >
         Send EXE
+      </button>
     </form>
   </div>
+  <header class="mb-8 mt-8">
+    <h1 class="text-4xl font-bold">Your Cards</h1>
+  </header>
+
+  <main>
+    <div class="grid">
+      {#each nfts as nft}
+        <div class="nft-card">
+          <div class="card" style="width: 18rem;">
+            <section class="p-4 flex justify-center">
+              <div
+                style="width: 250px; height: 250px; background-color: #f0f0f0;"
+              ></div>
+            </section>
+            <header class="card-header">4 of hearts</header>
+            <footer class="card-footer">Glowwies</footer>
+            <div class="card-body">
+              <div class="flex justify-between">
+                <button class="btn variant-filled-primary">Send</button>
+                <button class="btn variant-filled-primary">Customize</button>
+                <button class="btn variant-filled-primary">View</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      {/each}
+    </div>
+  </main>
 </div>
+
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+  }
+</style>

@@ -628,10 +628,10 @@ fn __get_candid_interface_tmp_hack() -> String {
 }
 
 // ----------------------
-// retrieve all NFTs
+// fetch all NFTs
 // ----------------------
 #[query]
-fn list_all_nfts_full() -> Vec<Nft> {
+fn fetch_all_nfts() -> Vec<Nft> {
     STATE.with(|state| state.borrow().nfts.clone())
 }
 
