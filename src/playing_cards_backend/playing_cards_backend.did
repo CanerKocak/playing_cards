@@ -69,9 +69,9 @@ service : (InitArgs) -> {
   approve_allowance : (nat) -> (Result_1);
   balanceOfDip721 : (principal) -> (nat64) query;
   burnDip721 : (nat64) -> (Result);
+  fetch_nfts : () -> (vec Nft) query;
   isApprovedForAllDip721 : (principal) -> (bool) query;
   is_custodian : (principal) -> (bool) query;
-  list_all_nfts_full : () -> (vec Nft) query;
   list_nft_for_sale : (nat64, nat64) -> (Result_2);
   list_sale_listings : () -> (vec SaleListing) query;
   mintDip721 : (principal, vec MetadataPart, blob) -> (Result_3);
