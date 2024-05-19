@@ -3,28 +3,21 @@
   import { cardBackend, ledgerBackend } from "$lib/canisters/canisters";
   import { getModalStore, getToastStore } from "@skeletonlabs/skeleton";
   import { Principal } from "@dfinity/principal";
-  import { principal, loggedIn } from "$lib/stores/auth";
+  import { loggedIn, principal } from "$lib/stores/auth";
   import { onMount } from "svelte";
-  import { clipboard } from "@skeletonlabs/skeleton";
+  import * as crypto from "crypto-js"; // Importing from crypto-js
+
   let nfts = [];
-
-  async function fetchNFTs() {
-    nfts = await cardBackend.list_sale_listings();
-  }
-
-  const modalStore = getModalStore();
-  const toastStore = getToastStore();
-
+  let whoami = null;
+  let whoamisub = null;
   let balance = null;
   let formattedBalance = null;
   let recipient = "";
   let amount = 0;
   let isValidPrincipal = false;
-  let principleValue = "";
 
-  $: {
-    principleValue = $principal;
-  }
+  const modalStore = getModalStore();
+  const toastStore = getToastStore();
 
   $: {
     formattedBalance = formatBalance(balance);
@@ -32,28 +25,39 @@
   }
 
   onMount(async () => {
+    await getWhoAmI();
     fetchNFTs();
     setTimeout(() => {
       fetchUserBalance();
     }, 100);
   });
 
+  async function fetchNFTs() {
+    nfts = await cardBackend.list_sale_listings();
+  }
+
+  async function getWhoAmI() {
+    whoami = await cardBackend.whoami();
+    whoamisub = crypto.enc.Hex.stringify(crypto.lib.WordArray.create(whoami));
+  }
+
   async function fetchUserBalance() {
-    if (principleValue === "") {
-      return;
+    if (!whoamisub) {
+      await getWhoAmI();
     }
 
     try {
-      const principal = Principal.fromText(principleValue);
-      if (!principal) {
-        console.error("Invalid principal:", principleValue);
-        showErrorToast("Invalid user. Please check your input.");
-        return;
+      const user = await cardBackend.get_user($principal.toText());
+      if (user) {
+        whoamisub = crypto.enc.Hex.stringify(
+          crypto.lib.WordArray.create(user.subaccount)
+        );
+        balance = user.balance;
+      } else {
+        await cardBackend.register_user($principal.toText());
+        await getWhoAmI();
+        balance = 0;
       }
-      balance = await ledgerBackend.icrc1_balance_of({
-        owner: Principal.fromText(principleValue),
-        subaccount: [],
-      });
     } catch (error) {
       showErrorToast("Failed to fetch user balance. Please try again.");
     }
@@ -67,7 +71,7 @@
         amount: BigInt(Math.round(amount * 1e8)),
         memo: [],
         fee: [],
-        from_subaccount: [],
+        from_subaccount: [Uint8Array.from(Buffer.from(whoamisub, "hex"))], // Convert hex string to Uint8Array
         created_at_time: [],
       });
 
@@ -132,23 +136,21 @@
   }
 
   async function copyToClipboard() {
-    if (principleValue === "") {
-      showErrorToast("Error: User Principal is empty");
+    if (!whoamisub) {
+      showErrorToast("Error: User Subaccount is empty");
       return;
     }
 
-    const userPrincipalShortened =
-      principleValue.length > 10
-        ? `${principleValue.slice(0, 10)}...`
-        : principleValue;
+    const userSubaccountShortened =
+      whoamisub.length > 10 ? `${whoamisub.slice(0, 10)}...` : whoamisub;
     showSuccessToast(
-      `Principal copied to clipboard: ${userPrincipalShortened}`
+      `Subaccount copied to clipboard: ${userSubaccountShortened}`
     );
+    await navigator.clipboard.writeText(whoamisub); // Copy to clipboard
   }
 </script>
 
 <div class="container p-4">
-
   <div class="window mb-4">
     <div class="title-bar">
       <div class="title-bar-text">Account Balance</div>
@@ -159,7 +161,7 @@
     {#if $loggedIn}
       <p class="text-4xl p-3">{formattedBalance || "Loading..."} EXE</p>
       <div class="mt-4 flex items-center">
-        <p class="text-lg p-3">Your Principal: {$principal}</p>
+        <p class="text-lg p-3">Your Subaccount: {whoamisub}</p>
       </div>
       <button
         class="btn variant-filled-primary mt-4 mr-2"
@@ -170,12 +172,13 @@
       <button
         class="btn variant-filled-primary mt-4"
         on:click={copyToClipboard}
-        use:clipboard={{ principleValue }}
       >
         Copy
       </button>
     {:else}
-      <p class="text-lg font-semibold p-3">Please login to view your balance.</p>
+      <p class="text-lg font-semibold p-3">
+        Please login to view your balance.
+      </p>
     {/if}
   </div>
 
@@ -196,7 +199,7 @@
           id="recipient"
           class="w-full"
           bind:value={recipient}
-          placeholder="Enter Principle..."
+          placeholder="Enter Principal..."
           required
         />
         {#if isValidPrincipal}
@@ -214,7 +217,9 @@
 
       <!-- Amount of EXE -->
       <div class="mb-4">
-        <div class="input-group input-group-divider grid-cols-[auto_1fr_auto] p-1">
+        <div
+          class="input-group input-group-divider grid-cols-[auto_1fr_auto] p-1"
+        >
           <div class="input-group-shim">EXE</div>
           <input
             type="number"
@@ -260,7 +265,9 @@
         {/each}
       </div>
     {:else}
-      <p class="text-lg font-semibold p-3">You don't have any cards. Try to see if you can buy one.</p>
+      <p class="text-lg font-semibold p-3">
+        You don't have any cards. Try to see if you can buy one.
+      </p>
     {/if}
   </main>
 </div>

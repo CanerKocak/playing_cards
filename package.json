@@ -17,7 +17,8 @@
   ],
   "dependencies": {
     "@dfinity/principal": "^1.2.0",
-    "@skeletonlabs/skeleton": "^2.9.0"
+    "@skeletonlabs/skeleton": "^2.9.0",
+    "crypto-js": "^4.2.0"
   },
   "devDependencies": {
     "@dfinity/auth-client": "^1.2.0",
