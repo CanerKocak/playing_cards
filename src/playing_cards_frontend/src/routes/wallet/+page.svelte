@@ -72,8 +72,6 @@
       });
 
       if ("Ok" in response) {
-        console.log("Tokens sent successfully:", response);
-        console.log("Tokens sent successfully:", response.Ok);
         showSuccessToast("Tokens sent successfully!");
         fetchUserBalance();
         resetForm();
@@ -150,9 +148,6 @@
 </script>
 
 <div class="container p-4">
-  <header class="mb-8">
-    <h1 class="text-4xl font-bold">Wallet Dashboard</h1>
-  </header>
 
   <div class="window mb-4">
     <div class="title-bar">
@@ -241,33 +236,32 @@
       </button>
     </form>
   </div>
-  <header class="mb-8 mt-8">
-    <h1 class="text-4xl font-bold">Your Cards</h1>
-  </header>
 
   <main>
-    <div class="grid">
-      {#each nfts as nft}
-        <div class="nft-card">
-          <div class="card" style="width: 18rem;">
-            <section class="p-4 flex justify-center">
-              <div
-                style="width: 250px; height: 250px; background-color: #f0f0f0;"
-              ></div>
-            </section>
-            <header class="card-header">4 of hearts</header>
-            <footer class="card-footer">Glowwies</footer>
-            <div class="card-body">
-              <div class="flex justify-between">
-                <button class="btn variant-filled-primary">Send</button>
-                <button class="btn variant-filled-primary">Customize</button>
-                <button class="btn variant-filled-primary">View</button>
+    {#if nfts.length > 0}
+      <div class="grid">
+        {#each nfts as nft}
+          <div class="nft-card">
+            <div class="card" style="width: 18rem;">
+              <section class="p-4 flex justify-center">
+                <div
+                  style="width: 250px; height: 250px; background-color: #f0f0f0;"
+                ></div>
+              </section>
+              <div class="card-body">
+                <div class="flex justify-between">
+                  <button class="btn variant-filled-primary">Send</button>
+                  <button class="btn variant-filled-primary">Customize</button>
+                  <button class="btn variant-filled-primary">View</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      {/each}
-    </div>
+        {/each}
+      </div>
+    {:else}
+      <p class="text-lg font-semibold p-3">You don't have any cards. Try to see if you can buy one.</p>
+    {/if}
   </main>
 </div>
 

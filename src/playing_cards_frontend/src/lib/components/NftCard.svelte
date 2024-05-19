@@ -26,10 +26,9 @@
       <div class="card" style="width: 18rem;">
         <img src={getImageDataUrl(nft.content)} alt={nft.name} />
         <div class="card-body">
-          <button class="btn variant-filled-primary">View</button>
-          <button class="btn variant-filled-primary">Details</button>
-          <button class="btn variant-filled-primary">Buy</button>
-          <button class="btn variant-filled-primary">Sell</button>
+          <button>Buy</button>
+          <button>View</button>
+          <button>Sell</button>
         </div>
       </div>
     </div>
