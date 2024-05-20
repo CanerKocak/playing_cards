@@ -9,8 +9,7 @@ use ic_cdk::{
     storage,
 };
 use ic_certified_map::Hash;
-use icrc_ledger_types::icrc1::account::{Account, Subaccount};
-use icrc_ledger_types::icrc1::transfer::{BlockIndex, TransferArg, TransferError};
+
 use include_base64::include_base64;
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -25,12 +24,15 @@ use std::result::Result as StdResult;
 extern crate ic_cdk_macros;
 
 mod http;
-mod mint_default_cards;
+mod marketplace;
+mod wallet;
+
+use marketplace::*;
+use wallet::*;
 
 // use mint_default_cards::mint_all_default_cards;
 
 const MGMT: Principal = Principal::from_slice(&[]);
-const WINDOGE98: &str = "rh2pm-ryaaa-aaaan-qeniq-cai";
 
 thread_local! {
     static STATE: RefCell<State> = RefCell::default();
@@ -44,13 +46,6 @@ type Tokens = u64;
 struct StableState {
     state: State,
     hashes: Vec<(String, Hash)>,
-}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-struct User {
-    principal: Principal,
-    subaccount: Subaccount,
-    balance: Tokens,
 }
 
 #[pre_upgrade]
@@ -498,9 +493,7 @@ struct State {
     symbol: String,
     txid: u128,
     sale_listings: HashMap<u64, SaleListing>, // token_id to SaleListing
-    icrc1_canister_id: Option<String>,        // Canister ID of the ICRC1 canister
-    #[serde(default)]
-    users: HashMap<String, User>, // Ensure users field has a default value
+    icrc1_canister_id: Option<String>,        // canister id of the icrc1 canister
 }
 
 #[derive(CandidType, Deserialize, Clone)]
@@ -638,213 +631,6 @@ fn is_custodian(principal: Principal) -> bool {
 fn __get_candid_interface_tmp_hack() -> String {
     include_str!("../playing_cards_backend.did").to_string()
 }
-
-// ----------------------
-// fetch all NFTs
-// ----------------------
-#[query]
-fn fetch_nfts() -> Vec<Nft> {
-    STATE.with(|state| state.borrow().nfts.clone())
-}
-
-// ----------------------
-// NFT Sales
-// ----------------------
-
-#[derive(CandidType, Deserialize, Clone)]
-struct SaleListing {
-    token_id: u64,
-    seller: Principal,
-    price: Tokens,
-}
-
-#[update]
-fn list_nft_for_sale(token_id: u64, price: Tokens) -> Result<(), Error> {
-    let caller = api::caller();
-    if owner_of(token_id).map_err(|_| Error::InvalidTokenId)? != caller {
-        return Err(Error::Unauthorized);
-    }
-
-    STATE.with(|state| {
-        let mut state = state.borrow_mut();
-
-        let nft = state
-            .nfts
-            .get_mut(usize::try_from(token_id)?)
-            .ok_or(Error::InvalidTokenId)?;
-
-        // transfer the NFT to the canister
-        nft.owner = api::id();
-
-        state.sale_listings.insert(
-            token_id,
-            SaleListing {
-                token_id,
-                seller: caller,
-                price,
-            },
-        );
-        Ok(())
-    })
-}
-
-#[update]
-fn remove_sale_listing(token_id: u64) -> Result<(), Error> {
-    // from state get sale_listing and the nft
-    STATE.with(|state| {
-        let mut state = state.borrow_mut();
-        let sale_listing = state
-            .sale_listings
-            .remove(&token_id)
-            .ok_or(Error::NFTNotForSale)?;
-
-        let nft = state
-            .nfts
-            .get_mut(usize::try_from(token_id)?)
-            .ok_or(Error::InvalidTokenId)?;
-
-        // transfer the NFT back to the seller
-        if sale_listing.seller != api::caller() {
-            return Err(Error::Unauthorized);
-        }
-
-        nft.owner = sale_listing.seller;
-
-        state.sale_listings.remove(&token_id);
-
-        Ok(())
-    })
-}
-
-// buy NFT
-#[derive(CandidType, Deserialize, Clone)]
-struct BuyNftArgs {
-    token_id: u64,
-    amount: Tokens,
-}
-
-#[query]
-fn list_sale_listings() -> Vec<SaleListing> {
-    STATE.with(|state| state.borrow().sale_listings.values().cloned().collect())
-}
-
-// ----------------------
-// Frontend subaccount wallet
-// ----------------------
-
-// Define the TransferArgs struct
-#[derive(CandidType, Deserialize)]
-struct TransferArgs {
-    to_account: Account,
-    amount: Nat,
-}
-
-// Register a user and generate a subaccount
-#[update]
-fn register_user(user_id: String) -> User {
-    let subaccount = principal_to_subaccount(&Principal::from_text(&user_id).unwrap());
-    let user = User {
-        principal: ic_cdk::caller(),
-        subaccount,
-        balance: 0,
-    };
-    STATE.with(|state| {
-        state
-            .borrow_mut()
-            .users
-            .insert(user_id.clone(), user.clone())
-    });
-    user
-}
-
-// Get user details
-#[query]
-fn get_user(user_id: String) -> Option<User> {
-    STATE.with(|state| state.borrow().users.get(&user_id).cloned())
-}
-
-#[query]
-fn whoami() -> Principal {
-    api::caller()
-}
-
-// Notify deposit and update user balance
-#[update]
-async fn notify_deposit(user_id: String) -> Result<(), String> {
-    let user = get_user(user_id.clone()).ok_or("User not found")?;
-    let balance = icrc1_balance_of(user.subaccount)
-        .await
-        .map_err(|e| format!("Balance retrieval failed: {}", e))?;
-    STATE.with(|state| {
-        state.borrow_mut().users.entry(user_id).and_modify(|u| {
-            u.balance = balance;
-        });
-    });
-    Ok(())
-}
-
-async fn icrc1_balance_of(subaccount: Subaccount) -> Result<u64, String> {
-    let ledger_canister_id = Principal::from_text(WINDOGE98).unwrap();
-    let account = Account {
-        owner: ledger_canister_id,
-        subaccount: Some(subaccount),
-    };
-    let (balance,): (u64,) = ic_cdk::call(ledger_canister_id, "icrc1_balance_of", (account,))
-        .await
-        .map_err(|e| format!("Call failed: {:?}", e))?;
-    Ok(balance)
-}
-
-async fn icrc1_transfer(transfer_args: TransferArg) -> Result<Nat, TransferError> {
-    let ledger_canister_id = Principal::from_text(WINDOGE98).unwrap();
-    let error_code = Nat::from(0u64); // Use u64 to construct Nat
-    let (result,): (Result<Nat, TransferError>,) =
-        ic_cdk::call(ledger_canister_id, "icrc1_transfer", (transfer_args,))
-            .await
-            .map_err(|_| TransferError::GenericError {
-                error_code: error_code.clone(),
-                message: "Call failed".to_string(),
-            })?;
-    result
-}
-
-// Transfer tokens from the caller's subaccount
-#[update]
-async fn transfer_tokens(args: TransferArgs) -> Result<BlockIndex, Error> {
-    let caller = ic_cdk::caller();
-    let user_id = caller.to_text();
-    let user = get_user(user_id.clone()).ok_or(Error::InsufficientBalance)?;
-
-    let transfer_args = TransferArg {
-        from_subaccount: Some(user.subaccount),
-        to: args.to_account,
-        fee: None,
-        memo: None,
-        created_at_time: None,
-        amount: args.amount,
-    };
-
-    let block_index = icrc1_transfer(transfer_args).await.map_err(|e| match e {
-        TransferError::InsufficientFunds { balance: _ } => Error::InsufficientBalance,
-        _ => Error::TransferFailed(format!("Transfer failed: {:?}", e)),
-    })?;
-
-    notify_deposit(user_id)
-        .await
-        .map_err(|_| Error::BalanceRetrievalFailed)?;
-
-    Ok(block_index)
-}
-
-// Utility function to create a subaccount from a principal
-fn principal_to_subaccount(principal: &Principal) -> Subaccount {
-    let mut subaccount = [0; 32];
-    let principal_bytes = principal.as_slice();
-    subaccount[0] = principal_bytes.len() as u8;
-    subaccount[1..1 + principal_bytes.len()].copy_from_slice(principal_bytes);
-    subaccount
-}
-
 // ----------------------
 // candid interface
 // ----------------------
