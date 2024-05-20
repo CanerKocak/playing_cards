@@ -71,7 +71,7 @@ service : (InitArgs) -> {
   safeTransferFromNotifyDip721 : (principal, principal, nat64, blob) -> (
       Result,
     );
-  send_exe_to_wallet : (nat64) -> (Result);
+  send_exe_to_wallet : () -> (Result);
   setApprovalForAllDip721 : (principal, bool) -> (Result);
   set_custodian : (principal, bool) -> (Result_3);
   set_logo : (opt LogoResult) -> (Result_3);

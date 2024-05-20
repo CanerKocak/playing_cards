@@ -143,8 +143,8 @@
   async function sendFromDappToWallet() {
     showSuccessToast("Sending tokens from dApp to wallet...");
     try {
-      const amountToSend = BigInt(dappBalance) - icrc1_fee;
-      const response = await cardBackend.send_exe_to_wallet(amountToSend);
+      const response = await cardBackend.send_exe_to_wallet();
+      console.log(response);
       if ("Ok" in response) {
         showSuccessToast("Tokens sent from dApp to wallet successfully!");
         fetchBalances();
