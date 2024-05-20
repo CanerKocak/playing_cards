@@ -44,6 +44,13 @@ type MetadataVal = variant {
   TextContent : text;
 };
 type MintResult = record { id : nat; token_id : nat64 };
+type Nft = record {
+  id : nat64;
+  content : blob;
+  owner : principal;
+  metadata : vec MetadataPart;
+  approved : opt principal;
+};
 type Result = variant { Ok : nat; Err : Error };
 type Result_1 = variant { Ok : MintResult; Err : ConstrainedError };
 type Result_2 = variant { Ok : principal; Err : Error };
@@ -53,6 +60,8 @@ service : (InitArgs) -> {
   approveDip721 : (principal, nat64) -> (Result);
   balanceOfDip721 : (principal) -> (nat64) query;
   burnDip721 : (nat64) -> (Result);
+  fetch_my_nfts : () -> (vec Nft) query;
+  fetch_nfts : () -> (vec Nft) query;
   isApprovedForAllDip721 : (principal) -> (bool) query;
   is_custodian : (principal) -> (bool) query;
   mintDip721 : (principal, vec MetadataPart, blob) -> (Result_1);
@@ -62,6 +71,7 @@ service : (InitArgs) -> {
   safeTransferFromNotifyDip721 : (principal, principal, nat64, blob) -> (
       Result,
     );
+  send_exe_to_wallet : (nat64) -> (Result);
   setApprovalForAllDip721 : (principal, bool) -> (Result);
   set_custodian : (principal, bool) -> (Result_3);
   set_logo : (opt LogoResult) -> (Result_3);
@@ -72,4 +82,7 @@ service : (InitArgs) -> {
   totalSupplyDip721 : () -> (nat64) query;
   transferFromDip721 : (principal, principal, nat64) -> (Result);
   transferFromNotifyDip721 : (principal, principal, nat64, blob) -> (Result);
+  transfer_exe : (principal, nat64) -> (Result);
+  whoami : () -> (principal) query;
+  whoamisub : () -> (blob) query;
 }

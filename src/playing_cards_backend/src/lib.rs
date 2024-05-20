@@ -1,15 +1,16 @@
+// lib.rs
 #![allow(clippy::collapsible_else_if)]
 
 extern crate serde;
 
-use candid::{CandidType, Deserialize, Encode, Nat, Principal};
+use candid::{CandidType, Deserialize, Encode, Principal};
 use ic_cdk::api::call::ArgDecoderConfig;
 use ic_cdk::{
     api::{self, call},
     storage,
 };
 use ic_certified_map::Hash;
-
+use icrc_ledger_types::icrc1::transfer::BlockIndex;
 use include_base64::include_base64;
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -20,27 +21,22 @@ use std::mem;
 use std::num::TryFromIntError;
 use std::result::Result as StdResult;
 
+use icrc_ledger_types::icrc1::account::Subaccount;
 #[macro_use]
 extern crate ic_cdk_macros;
 
+mod deck;
 mod http;
 mod marketplace;
 mod wallet;
 
 use marketplace::*;
-use wallet::*;
-
-// use mint_default_cards::mint_all_default_cards;
 
 const MGMT: Principal = Principal::from_slice(&[]);
 
 thread_local! {
     static STATE: RefCell<State> = RefCell::default();
 }
-
-type Tokens = u64;
-
-// type TransferResult = Result<u64, TransferError>;
 
 #[derive(CandidType, Deserialize)]
 struct StableState {

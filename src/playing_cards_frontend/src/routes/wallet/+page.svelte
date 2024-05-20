@@ -1,96 +1,163 @@
 <script>
-  import "../../index.scss";
-  import { cardBackend, ledgerBackend } from "$lib/canisters/canisters";
-  import { getModalStore, getToastStore } from "@skeletonlabs/skeleton";
-  import { Principal } from "@dfinity/principal";
-  import { loggedIn, principal } from "$lib/stores/auth";
   import { onMount } from "svelte";
-  import * as crypto from "crypto-js"; // Importing from crypto-js
+  import { getToastStore } from "@skeletonlabs/skeleton";
+  import { Principal } from "@dfinity/principal";
+  import { loggedIn } from "$lib/stores/auth";
+  import { cardBackend, ledgerBackend } from "$lib/canisters/canisters";
+  import { canisterId as cardCanisterId } from "declarations/playing_cards_backend";
+  import { formatBigDecimalToString2Digits, shortenCaller } from "$lib/utils";
 
-  let nfts = [];
   let whoami = null;
   let whoamisub = null;
-  let balance = null;
-  let formattedBalance = null;
+  let walletBalance = 0n;
+  let dappBalance = 0n;
   let recipient = "";
   let amount = 0;
   let isValidPrincipal = false;
+  let fetchingBalances = false;
+  let icrc1_fee = 1_000_000n;
 
-  const modalStore = getModalStore();
   const toastStore = getToastStore();
 
-  $: {
-    formattedBalance = formatBalance(balance);
-    isValidPrincipal = checkPrincipalValidity(recipient);
-  }
+  $: formattedWalletBalance = formatBalance(walletBalance);
+  $: formattedDappBalance = formatBalance(dappBalance);
+  $: isValidPrincipal = checkPrincipalValidity(recipient);
 
   onMount(async () => {
-    await getWhoAmI();
-    fetchNFTs();
-    setTimeout(() => {
-      fetchUserBalance();
-    }, 100);
+    await initializeUser();
   });
 
-  async function fetchNFTs() {
-    nfts = await cardBackend.list_sale_listings();
+  $: if ($loggedIn) {
+    initializeUser();
+    fetchBalances();
   }
 
-  async function getWhoAmI() {
-    whoami = await cardBackend.whoami();
-    whoamisub = crypto.enc.Hex.stringify(crypto.lib.WordArray.create(whoami));
-  }
-
-  async function fetchUserBalance() {
-    if (!whoamisub) {
-      await getWhoAmI();
-    }
-
+  async function initializeUser() {
     try {
-      const user = await cardBackend.get_user($principal.toText());
-      if (user) {
-        whoamisub = crypto.enc.Hex.stringify(
-          crypto.lib.WordArray.create(user.subaccount)
-        );
-        balance = user.balance;
-      } else {
-        await cardBackend.register_user($principal.toText());
-        await getWhoAmI();
-        balance = 0;
-      }
+      whoami = await cardBackend.whoami();
+      whoamisub = await cardBackend.whoamisub();
+      await fetchBalances();
     } catch (error) {
-      showErrorToast("Failed to fetch user balance. Please try again.");
+      showErrorToast("Failed to initialize user.");
+      console.error("Failed to initialize user:", error);
+    }
+  }
+
+  async function fetchBalances() {
+    if (!whoami) return;
+    fetchingBalances = true;
+    try {
+      walletBalance = await getBalance(whoami);
+      dappBalance = await getSubaccountBalance(whoamisub);
+    } catch (error) {
+      showErrorToast("Failed to fetch balances.");
+      console.error("Failed to fetch balances:", error);
+    } finally {
+      fetchingBalances = false;
+    }
+  }
+
+  async function getBalance(principal) {
+    return await ledgerBackend.icrc1_balance_of({
+      owner: Principal.fromText(principal.toText()),
+      subaccount: [],
+    });
+  }
+
+  async function getSubaccountBalance(principal) {
+    try {
+      const whoamisub = await cardBackend.whoamisub();
+      return await ledgerBackend.icrc1_balance_of({
+        owner: Principal.fromText(cardCanisterId),
+        subaccount: [whoamisub],
+      });
+    } catch (error) {
+      showErrorToast("Failed to fetch subaccount balance.");
+      console.error("Failed to fetch subaccount balance:", error);
+      return 0n;
     }
   }
 
   async function sendTokens() {
     showSuccessToast("Sending tokens...");
     try {
+      const transferAmount = BigInt(Math.round(amount * 1e8)) - icrc1_fee;
       const response = await ledgerBackend.icrc1_transfer({
         to: { owner: Principal.fromText(recipient.trim()), subaccount: [] },
-        amount: BigInt(Math.round(amount * 1e8)),
+        amount: transferAmount,
         memo: [],
         fee: [],
-        from_subaccount: [Uint8Array.from(Buffer.from(whoamisub, "hex"))], // Convert hex string to Uint8Array
+        from_subaccount: [],
         created_at_time: [],
       });
 
       if ("Ok" in response) {
         showSuccessToast("Tokens sent successfully!");
-        fetchUserBalance();
+        fetchBalances();
         resetForm();
       } else {
         showErrorToast(`Failed to send tokens: ${response.Err}`);
       }
     } catch (error) {
-      if (error.message.includes("ledger transfer error")) {
-        const errorMessage = error.message
-          .split("ledger transfer error")[1]
-          .trim();
-        showErrorToast(`Failed to send tokens: ${errorMessage}`);
+      showErrorToast("Failed to send tokens. Please try again.");
+      console.error("Failed to send tokens:", error);
+    }
+  }
+
+  async function sendToDapp() {
+    showSuccessToast("Sending tokens to dApp...");
+    try {
+      let whoamisub = await cardBackend.whoamisub();
+      console.log("whoamisub", whoamisub);
+
+      let account = {
+        owner: Principal.fromText(cardCanisterId),
+        subaccount: [whoamisub],
+      };
+
+      const amountToSend = BigInt(walletBalance) - icrc1_fee;
+
+      const response = await ledgerBackend.icrc1_transfer({
+        to: account,
+        amount: amountToSend,
+        fee: [], 
+        memo: [],
+        from_subaccount: [],
+        created_at_time: [],
+      });
+
+      console.log(amountToSend);
+      console.log(response);
+      if ("Ok" in response) {
+        showSuccessToast("Tokens sent to dApp successfully!");
+        fetchBalances();
       } else {
-        showErrorToast("Failed to send tokens. Please try again.");
+        showErrorToast(`Failed to send tokens to dApp: ${response.Err}`);
       }
+    } catch (error) {
+      showErrorToast("Failed to send tokens to dApp. Please try again.");
+      console.error("Failed to send tokens to dApp:", error);
+    }
+  }
+
+  async function sendFromDappToWallet() {
+    showSuccessToast("Sending tokens from dApp to wallet...");
+    try {
+      const amountToSend = BigInt(dappBalance) - icrc1_fee;
+      const response = await cardBackend.send_exe_to_wallet(amountToSend);
+      if ("Ok" in response) {
+        showSuccessToast("Tokens sent from dApp to wallet successfully!");
+        fetchBalances();
+      } else {
+        showErrorToast(
+          `Failed to send tokens from dApp to wallet: ${response.Err}`
+        );
+      }
+    } catch (error) {
+      showErrorToast(
+        "Failed to send tokens from dApp to wallet. Please try again."
+      );
+      console.error("Failed to send tokens from dApp to wallet:", error);
     }
   }
 
@@ -100,127 +167,138 @@
   }
 
   function showSuccessToast(message) {
-    const successToast = {
+    toastStore.trigger({
       message,
       background: "variant-filled-primary",
       timeout: 3000,
-    };
-    toastStore.trigger(successToast);
+    });
   }
 
   function showErrorToast(message) {
-    const errorToast = {
+    toastStore.trigger({
       message,
       background: "variant-filled-error",
       timeout: 5000,
-    };
-    toastStore.trigger(errorToast);
+    });
   }
 
   function formatBalance(balance) {
-    if (balance === null) return "Loading...";
-    let balanceStr = balance.toString();
-    balanceStr = balanceStr.padStart(9, "0");
-    let formattedBalance = balanceStr.slice(0, -8) + "." + balanceStr.slice(-8);
-    formattedBalance = parseFloat(formattedBalance).toString();
-    return formattedBalance;
+    return formatBigDecimalToString2Digits(balance);
   }
 
   function checkPrincipalValidity(principal) {
     try {
       Principal.fromText(principal);
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
 
-  async function copyToClipboard() {
-    if (!whoamisub) {
-      showErrorToast("Error: User Subaccount is empty");
-      return;
-    }
-
-    const userSubaccountShortened =
-      whoamisub.length > 10 ? `${whoamisub.slice(0, 10)}...` : whoamisub;
-    showSuccessToast(
-      `Subaccount copied to clipboard: ${userSubaccountShortened}`
-    );
-    await navigator.clipboard.writeText(whoamisub); // Copy to clipboard
+  function copyToClipboard(text) {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        showSuccessToast("Copied to clipboard!");
+      })
+      .catch((error) => {
+        showErrorToast("Failed to copy to clipboard.");
+        console.error("Failed to copy to clipboard:", error);
+      });
   }
 </script>
 
-<div class="container p-4">
-  <div class="window mb-4">
+<div class="container">
+  <div class="window">
     <div class="title-bar">
-      <div class="title-bar-text">Account Balance</div>
-      <div class="title-bar-controls">
-        <button aria-label="Close"></button>
-      </div>
+      <div class="title-bar-text">Wallet Balance (Principal)</div>
     </div>
-    {#if $loggedIn}
-      <p class="text-4xl p-3">{formattedBalance || "Loading..."} EXE</p>
-      <div class="mt-4 flex items-center">
-        <p class="text-lg p-3">Your Subaccount: {whoamisub}</p>
-      </div>
-      <button
-        class="btn variant-filled-primary mt-4 mr-2"
-        on:click={fetchUserBalance}
-      >
-        Refresh
-      </button>
-      <button
-        class="btn variant-filled-primary mt-4"
-        on:click={copyToClipboard}
-      >
-        Copy
-      </button>
-    {:else}
-      <p class="text-lg font-semibold p-3">
-        Please login to view your balance.
-      </p>
-    {/if}
+    <div class="window-body">
+      {#if $loggedIn}
+        <p class="balance">{formattedWalletBalance || "Loading..."} EXE</p>
+        <button
+          on:click={fetchBalances}
+          class="refresh-btn"
+          disabled={fetchingBalances}>Refresh</button
+        >
+      {:else}
+        <p class="info-text">Please login to view your balance.</p>
+      {/if}
+    </div>
+  </div>
+
+  <div class="window">
+    <div class="title-bar">
+      <div class="title-bar-text">dApp Balance (Subaccount)</div>
+    </div>
+    <div class="window-body">
+      {#if $loggedIn}
+        <p class="balance">{formattedDappBalance || "Loading..."} EXE</p>
+        <button
+          on:click={fetchBalances}
+          class="refresh-btn"
+          disabled={fetchingBalances}>Refresh</button
+        >
+      {:else}
+        <p class="info-text">Please login to view your balance.</p>
+      {/if}
+    </div>
+  </div>
+
+  <div class="window">
+    <div class="title-bar">
+      <div class="title-bar-text">User Address</div>
+    </div>
+    <div class="window-body">
+      {#if $loggedIn}
+        <div class="address-info">
+          <p class="label">Principal ID:</p>
+          <div class="input-group">
+            <input type="text" value={whoami} readonly class="input" />
+            <button on:click={() => copyToClipboard(whoami)} class="copy-btn"
+              >Copy</button
+            >
+          </div>
+          <p class="label">Subaccount:</p>
+          <div class="input-group">
+            <input type="text" value={whoamisub} readonly class="input" />
+            <button on:click={() => copyToClipboard(whoamisub)} class="copy-btn"
+              >Copy</button
+            >
+          </div>
+        </div>
+      {:else}
+        <p class="info-text">Please login to view your address.</p>
+      {/if}
+    </div>
   </div>
 
   <div class="window">
     <div class="title-bar">
       <div class="title-bar-text">Send EXE</div>
-      <div class="title-bar-controls">
-        <button aria-label="Close"></button>
-      </div>
     </div>
-    <form on:submit|preventDefault={sendTokens} class="p-4">
-      <!-- Recipient Address -->
-      <div
-        class="input-group input-group-divider grid-cols-[1fr_auto] mb-4 mt-4 p-2 relative"
-      >
-        <input
-          type="text"
-          id="recipient"
-          class="w-full"
-          bind:value={recipient}
-          placeholder="Enter Principal..."
-          required
-        />
-        {#if isValidPrincipal}
+    <div class="window-body">
+      <form on:submit|preventDefault={sendTokens} class="send-form">
+        <div class="input-group">
+          <input
+            type="text"
+            id="recipient"
+            class="input"
+            bind:value={recipient}
+            placeholder="Enter Principal..."
+            required
+          />
           <span
-            title="Principal is valid"
-            class="absolute right-4 top-1/2 transform -translate-y-1/2">✅</span
+            class="validity-indicator"
+            title={isValidPrincipal
+              ? "Principal is valid"
+              : "Principal is invalid"}
           >
-        {:else}
-          <span
-            title="Principal is invalid"
-            class="absolute right-4 top-1/2 transform -translate-y-1/2">❌</span
-          >
-        {/if}
-      </div>
-
-      <!-- Amount of EXE -->
-      <div class="mb-4">
-        <div
-          class="input-group input-group-divider grid-cols-[auto_1fr_auto] p-1"
-        >
-          <div class="input-group-shim">EXE</div>
+            {isValidPrincipal ? "✅" : "❌"}
+          </span>
+        </div>
+        <div class="input-group">
+          <label class="input-label" for="amount">EXE</label>
           <input
             type="number"
             id="amount"
@@ -228,54 +306,27 @@
             min="0.01"
             step="0.00000001"
             required
+            class="input"
           />
         </div>
-      </div>
-
-      <button
-        type="submit"
-        class="btn variant-filled"
-        disabled={!isValidPrincipal}
-      >
-        Send EXE
-      </button>
-    </form>
+        <button type="submit" class="send-btn" disabled={!isValidPrincipal}
+          >Send EXE</button
+        >
+        <button type="button" class="send-btn" on:click={sendToDapp}
+          >Send to dApp</button
+        >
+        <button type="button" class="send-btn" on:click={sendFromDappToWallet}
+          >Send from dApp to Wallet</button
+        >
+      </form>
+    </div>
   </div>
-
-  <main>
-    {#if nfts.length > 0}
-      <div class="grid">
-        {#each nfts as nft}
-          <div class="nft-card">
-            <div class="card" style="width: 18rem;">
-              <section class="p-4 flex justify-center">
-                <div
-                  style="width: 250px; height: 250px; background-color: #f0f0f0;"
-                ></div>
-              </section>
-              <div class="card-body">
-                <div class="flex justify-between">
-                  <button class="btn variant-filled-primary">Send</button>
-                  <button class="btn variant-filled-primary">Customize</button>
-                  <button class="btn variant-filled-primary">View</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        {/each}
-      </div>
-    {:else}
-      <p class="text-lg font-semibold p-3">
-        You don't have any cards. Try to see if you can buy one.
-      </p>
-    {/if}
-  </main>
 </div>
 
 <style>
-  .grid {
+  .container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1rem;
   }
 </style>
