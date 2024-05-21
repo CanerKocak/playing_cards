@@ -1,64 +1,72 @@
 <script>
-  export const prerender = true;
-  import "../app.pcss";
-  import { AppRail, AppRailTile, AppShell, AppBar } from "@skeletonlabs/skeleton";
-  import { Modal } from "@skeletonlabs/skeleton";
-  import { initializeStores } from "@skeletonlabs/skeleton";
-  import { Toast } from "@skeletonlabs/skeleton";
-  import Login from "$lib/components/Login.svelte";
-  import { goto } from '$app/navigation';
   import { writable } from 'svelte/store';
-
-  // Import wallet svg
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import "../app.pcss";
+  import { AppRail, AppRailTile, AppShell, Modal, Toast } from "@skeletonlabs/skeleton";
+  import { initializeStores } from "@skeletonlabs/skeleton";
   import wallet from "../../../../wallet.svg";
   import deck from "../../../../deck.svg";
   import marketplace from "../../../../marketplace.svg";
-
-  // windoge98 logo
   import logo from "../../../../windoge98_logo.png";
+
+  let currentTile = writable(0);
 
   initializeStores();
 
-  let currentTile = writable(0);
+  $: $page.url.pathname, setCurrentTile();
+
+  function setCurrentTile() {
+    switch ($page.url.pathname) {
+      case '/':
+        currentTile.set(0);
+        break;
+      case '/deck':
+        currentTile.set(1);
+        break;
+      case '/wallet':
+        currentTile.set(2);
+        break;
+      case '/marketplace':
+        currentTile.set(3);
+        break;
+      default:
+        currentTile.set(0); // Default or unknown paths
+        break;
+    }
+  }
+
+  // Navigate and update tile
+  function navigateAndSetTile(url, tileIndex) {
+    goto(url);
+    currentTile.set(tileIndex);
+  }
 </script>
 
 <Toast />
 <Modal />
 
 <AppShell>
-  <svelte:fragment slot="header">
-        <div class="window">
-          <div class="title-bar">
-            <div class="title-bar-text">Windoge98</div>
-            <div class="title-bar-controls">
-              <button aria-label="Close"></button>
-            </div>
-          </div>
-          <div class="flex justify-between items-center m-1">
-            <div class="flex items-center">
-              <img src={logo} alt="Windoge98 logo" class="w-20 h-auto mr-4 ml -3" />
-              <h1 class="text-3xl font-bold">Playing Cards Collection</h1>
-            </div>
-            <Login />
-          </div>
-        </div>
-  </svelte:fragment>
-
   <svelte:fragment slot="sidebarLeft">
     <AppRail>
-      <AppRailTile bind:group={$currentTile} name="deck" value={0} title="Deck" on:click={() => goto('/')}>
+      <AppRailTile bind:group={$currentTile} name="main" value={0} title="Main" on:click={() => navigateAndSetTile('/', 0)}>
+        <svelte:fragment slot="lead">
+          <img src={logo} alt="Main" class="logo" />
+        </svelte:fragment>
+      </AppRailTile>
+      <AppRailTile bind:group={$currentTile} name="deck" value={1} title="Deck" on:click={() => navigateAndSetTile('/deck', 1)}>
         <svelte:fragment slot="lead">
           <img src={deck} alt="Deck" class="icon" />
         </svelte:fragment>
         <span>Deck</span>
       </AppRailTile>
-      <AppRailTile bind:group={$currentTile} name="wallet" value={1} title="Wallet" on:click={() => goto('/wallet')}>
+      <AppRailTile bind:group={$currentTile} name="wallet" value={2} title="Wallet" on:click={() => navigateAndSetTile('/wallet', 2)}>
         <svelte:fragment slot="lead">
           <img src={wallet} alt="Wallet" class="icon" />
         </svelte:fragment>
         <span>Wallet</span>
       </AppRailTile>
-      <AppRailTile bind:group={$currentTile} name="marketplace" value={2} title="Marketplace" on:click={() => goto('/marketplace')}>
+      <AppRailTile bind:group={$currentTile} name="marketplace" value={3} title="Marketplace" on:click={() => navigateAndSetTile('/marketplace', 3)}>
         <svelte:fragment slot="lead">
           <img src={marketplace} alt="Marketplace" class="icon" />
         </svelte:fragment>
@@ -77,9 +85,16 @@
 </AppShell>
 
 <style>
-  .icon {
+  .icon, .logo {
     width: 32px;
     height: 32px;
     margin-left: 24px;
+  }
+
+  .logo {
+    width: 64px;
+    height: auto;
+    margin-left: 8px;
+    margin-right: 0;
   }
 </style>

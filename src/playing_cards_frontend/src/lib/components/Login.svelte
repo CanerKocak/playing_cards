@@ -43,11 +43,11 @@
 </script>
 
 {#if $loggedIn}
-  <button class="btn variant-filled-primary" on:click={handleLogout}>
+  <button class="btn variant-filled-primary h-1" on:click={handleLogout}>
     Logout
   </button>
 {:else}
-  <button class="btn variant-filled-primary" on:click={handleLogin}>
-    Login with Internet Identity
+  <button class="btn variant-filled-primary h-1" on:click={handleLogin}>
+    Login
   </button>
 {/if}

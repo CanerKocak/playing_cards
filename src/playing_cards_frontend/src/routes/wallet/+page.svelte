@@ -5,7 +5,8 @@
   import { loggedIn } from "$lib/stores/auth";
   import { cardBackend, ledgerBackend } from "$lib/canisters/canisters";
   import { canisterId as cardCanisterId } from "declarations/playing_cards_backend";
-  import { formatBigDecimalToString2Digits, shortenCaller } from "$lib/utils";
+  import { formatBigDecimalToString2Digits } from "$lib/utils";
+  import Login from "$lib/components/Login.svelte";
 
   let whoami = null;
   let whoamisub = null;
@@ -120,7 +121,7 @@
       const response = await ledgerBackend.icrc1_transfer({
         to: account,
         amount: amountToSend,
-        fee: [], 
+        fee: [],
         memo: [],
         from_subaccount: [],
         created_at_time: [],
@@ -149,14 +150,10 @@
         showSuccessToast("Tokens sent from dApp to wallet successfully!");
         fetchBalances();
       } else {
-        showErrorToast(
-          `Failed to send tokens from dApp to wallet: ${response.Err}`
-        );
+        showErrorToast(`Failed to send tokens from dApp to wallet: ${response.Err}`);
       }
     } catch (error) {
-      showErrorToast(
-        "Failed to send tokens from dApp to wallet. Please try again."
-      );
+      showErrorToast("Failed to send tokens from dApp to wallet. Please try again.");
       console.error("Failed to send tokens from dApp to wallet:", error);
     }
   }
@@ -208,125 +205,98 @@
   }
 </script>
 
-<div class="container">
+<div class="container m-5">
   <div class="window">
     <div class="title-bar">
-      <div class="title-bar-text">Wallet Balance (Principal)</div>
+      <div class="title-bar-text">Wallet & dApp Management</div>
+      <Login />
     </div>
     <div class="window-body">
       {#if $loggedIn}
-        <p class="balance">{formattedWalletBalance || "Loading..."} EXE</p>
-        <button
-          on:click={fetchBalances}
-          class="refresh-btn"
-          disabled={fetchingBalances}>Refresh</button
-        >
-      {:else}
-        <p class="info-text">Please login to view your balance.</p>
-      {/if}
-    </div>
-  </div>
-
-  <div class="window">
-    <div class="title-bar">
-      <div class="title-bar-text">dApp Balance (Subaccount)</div>
-    </div>
-    <div class="window-body">
-      {#if $loggedIn}
-        <p class="balance">{formattedDappBalance || "Loading..."} EXE</p>
-        <button
-          on:click={fetchBalances}
-          class="refresh-btn"
-          disabled={fetchingBalances}>Refresh</button
-        >
-      {:else}
-        <p class="info-text">Please login to view your balance.</p>
-      {/if}
-    </div>
-  </div>
-
-  <div class="window">
-    <div class="title-bar">
-      <div class="title-bar-text">User Address</div>
-    </div>
-    <div class="window-body">
-      {#if $loggedIn}
-        <div class="address-info">
-          <p class="label">Principal ID:</p>
-          <div class="input-group">
-            <input type="text" value={whoami} readonly class="input" />
-            <button on:click={() => copyToClipboard(whoami)} class="copy-btn"
-              >Copy</button
-            >
+        <div>
+          <h2>Wallet Balance (Principal)</h2>
+          <p class="field-row">{formattedWalletBalance || "Loading..."} EXE</p>
+          <button class="button" on:click={fetchBalances} disabled={fetchingBalances}>Refresh</button>
+          <button class="button" on:click={sendToDapp}>Send dApp</button>
+        </div>
+        <div>
+          <h2>dApp Balance (Subaccount)</h2>
+          <p class="field-row">{formattedDappBalance || "Loading..."} EXE</p>
+          <button class="button" on:click={fetchBalances} disabled={fetchingBalances}>Refresh</button>
+          <button class="button" on:click={sendFromDappToWallet}>Send Wallet</button>
+        </div>
+        <div>
+          <h2>User Address</h2>
+          <div>
+            <label>Principal ID:</label>
+            <input type="text" value={whoami} readonly />
+            <button class="button" on:click={() => copyToClipboard(whoami)}>Copy</button>
           </div>
-          <p class="label">Subaccount:</p>
-          <div class="input-group">
-            <input type="text" value={whoamisub} readonly class="input" />
-            <button on:click={() => copyToClipboard(whoamisub)} class="copy-btn"
-              >Copy</button
-            >
+          <div>
+            <label>Subaccount:</label>
+            <input type="text" value={whoamisub} readonly />
+            <button class="button" on:click={() => copyToClipboard(whoamisub)}>Copy</button>
           </div>
         </div>
+        <div>
+          <h2>Send EXE</h2>
+          <form on:submit|preventDefault={sendTokens}>
+            <div class="field-row">
+              <label for="recipient">Recipient:</label>
+              <input type="text" id="recipient" bind:value={recipient} placeholder="Enter Principal..." required />
+              <span>{isValidPrincipal ? "✅" : "❌"}</span>
+            </div>
+            <div class="field-row">
+              <label for="amount">Amount:</label>
+              <input type="number" id="amount" bind:value={amount} min="0.01" step="0.00000001" required />
+            </div>
+            <button type="submit" class="button" disabled={!isValidPrincipal}>Send EXE</button>
+          </form>
+        </div>
       {:else}
-        <p class="info-text">Please login to view your address.</p>
+        <p>Please login to view your balance.</p>
       {/if}
-    </div>
-  </div>
-
-  <div class="window">
-    <div class="title-bar">
-      <div class="title-bar-text">Send EXE</div>
-    </div>
-    <div class="window-body">
-      <form on:submit|preventDefault={sendTokens} class="send-form">
-        <div class="input-group">
-          <input
-            type="text"
-            id="recipient"
-            class="input"
-            bind:value={recipient}
-            placeholder="Enter Principal..."
-            required
-          />
-          <span
-            class="validity-indicator"
-            title={isValidPrincipal
-              ? "Principal is valid"
-              : "Principal is invalid"}
-          >
-            {isValidPrincipal ? "✅" : "❌"}
-          </span>
-        </div>
-        <div class="input-group">
-          <label class="input-label" for="amount">EXE</label>
-          <input
-            type="number"
-            id="amount"
-            bind:value={amount}
-            min="0.01"
-            step="0.00000001"
-            required
-            class="input"
-          />
-        </div>
-        <button type="submit" class="send-btn" disabled={!isValidPrincipal}
-          >Send EXE</button
-        >
-        <button type="button" class="send-btn" on:click={sendToDapp}
-          >Send to dApp</button
-        >
-        <button type="button" class="send-btn" on:click={sendFromDappToWallet}
-          >Send from dApp to Wallet</button
-        >
-      </form>
     </div>
   </div>
 </div>
 
+
 <style>
   .container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(700px, 1fr));
     gap: 1rem;
+    margin: 20px;
   }
-</style>
+  
+  .window {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    height: 100%;
+  }
+  
+  .title-bar {
+    background-color: #f0f0f0;
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+  }
+  
+  .title-bar-text {
+    font-weight: bold;
+    font-size: 16px;
+  }
+  
+  .window-body {
+    padding: 15px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  
+  img {
+    max-width: 100%; 
+    height: auto;
+    margin-top: 10px;
+  }
+  </style>
+  
