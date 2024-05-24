@@ -7,6 +7,8 @@
   import { canisterId as cardCanisterId } from "declarations/playing_cards_backend";
   import { formatBigDecimalToString2Digits } from "$lib/utils";
   import Login from "$lib/components/Login.svelte";
+  import NftCard from "$lib/components/NftCard.svelte";
+  import NftDetails from "$lib/components/NftDetails.svelte";
 
   let whoami = null;
   let whoamisub = null;
@@ -17,6 +19,8 @@
   let isValidPrincipal = false;
   let fetchingBalances = false;
   let icrc1_fee = 1_000_000n;
+  let nfts = [];
+  let selectedNft = null;
 
   const toastStore = getToastStore();
 
@@ -31,6 +35,7 @@
   $: if ($loggedIn) {
     initializeUser();
     fetchBalances();
+    fetchNfts();
   }
 
   async function initializeUser() {
@@ -38,6 +43,7 @@
       whoami = await cardBackend.whoami();
       whoamisub = await cardBackend.whoamisub();
       await fetchBalances();
+      await fetchNfts();
     } catch (error) {
       showErrorToast("Failed to initialize user.");
       console.error("Failed to initialize user:", error);
@@ -55,6 +61,19 @@
       console.error("Failed to fetch balances:", error);
     } finally {
       fetchingBalances = false;
+    }
+  }
+
+  async function fetchNfts() {
+    try {
+      const userNfts = await cardBackend.getMetadataForUserDip721(whoami);
+      nfts = userNfts.map((nft) => ({
+        ...nft,
+        owner: whoami,
+      }));
+    } catch (error) {
+      showErrorToast("Failed to fetch NFTs.");
+      console.error("Failed to fetch NFTs:", error);
     }
   }
 
@@ -150,10 +169,14 @@
         showSuccessToast("Tokens sent from dApp to wallet successfully!");
         fetchBalances();
       } else {
-        showErrorToast(`Failed to send tokens from dApp to wallet: ${response.Err}`);
+        showErrorToast(
+          `Failed to send tokens from dApp to wallet: ${response.Err}`
+        );
       }
     } catch (error) {
-      showErrorToast("Failed to send tokens from dApp to wallet. Please try again.");
+      showErrorToast(
+        "Failed to send tokens from dApp to wallet. Please try again."
+      );
       console.error("Failed to send tokens from dApp to wallet:", error);
     }
   }
@@ -203,6 +226,14 @@
         console.error("Failed to copy to clipboard:", error);
       });
   }
+
+  function handleView(event) {
+    selectedNft = event.detail.nft;
+  }
+
+  function handleUpdate(event) {
+    // Handle NFT update logic here
+  }
 </script>
 
 <div class="container m-5">
@@ -216,26 +247,40 @@
         <div>
           <h2>Wallet Balance (Principal)</h2>
           <p class="field-row">{formattedWalletBalance || "Loading..."} EXE</p>
-          <button class="button" on:click={fetchBalances} disabled={fetchingBalances}>Refresh</button>
+          <button
+            class="button"
+            on:click={fetchBalances}
+            disabled={fetchingBalances}>Refresh</button
+          >
           <button class="button" on:click={sendToDapp}>Send dApp</button>
         </div>
         <div>
           <h2>dApp Balance (Subaccount)</h2>
           <p class="field-row">{formattedDappBalance || "Loading..."} EXE</p>
-          <button class="button" on:click={fetchBalances} disabled={fetchingBalances}>Refresh</button>
-          <button class="button" on:click={sendFromDappToWallet}>Send Wallet</button>
+          <button
+            class="button"
+            on:click={fetchBalances}
+            disabled={fetchingBalances}>Refresh</button
+          >
+          <button class="button" on:click={sendFromDappToWallet}
+            >Send Wallet</button
+          >
         </div>
         <div>
           <h2>User Address</h2>
           <div>
             <label>Principal ID:</label>
             <input type="text" value={whoami} readonly />
-            <button class="button" on:click={() => copyToClipboard(whoami)}>Copy</button>
+            <button class="button" on:click={() => copyToClipboard(whoami)}
+              >Copy</button
+            >
           </div>
           <div>
             <label>Subaccount:</label>
             <input type="text" value={whoamisub} readonly />
-            <button class="button" on:click={() => copyToClipboard(whoamisub)}>Copy</button>
+            <button class="button" on:click={() => copyToClipboard(whoamisub)}
+              >Copy</button
+            >
           </div>
         </div>
         <div>
@@ -243,15 +288,40 @@
           <form on:submit|preventDefault={sendTokens}>
             <div class="field-row">
               <label for="recipient">Recipient:</label>
-              <input type="text" id="recipient" bind:value={recipient} placeholder="Enter Principal..." required />
+              <input
+                type="text"
+                id="recipient"
+                bind:value={recipient}
+                placeholder="Enter Principal..."
+                required
+              />
               <span>{isValidPrincipal ? "✅" : "❌"}</span>
             </div>
             <div class="field-row">
               <label for="amount">Amount:</label>
-              <input type="number" id="amount" bind:value={amount} min="0.01" step="0.00000001" required />
+              <input
+                type="number"
+                id="amount"
+                bind:value={amount}
+                min="0.01"
+                step="0.00000001"
+                required
+              />
             </div>
-            <button type="submit" class="button" disabled={!isValidPrincipal}>Send EXE</button>
+            <button type="submit" class="button" disabled={!isValidPrincipal}
+              >Send EXE</button
+            >
           </form>
+        </div>
+        <div>
+          <h2>NFTs</h2>
+          {#if selectedNft}
+            <NftDetails {nft} on:update={handleUpdate} />
+          {:else}
+            {#each nfts as nft (nft.id)}
+              <NftCard {nft} on:view={handleView} />
+            {/each}
+          {/if}
         </div>
       {:else}
         <p>Please login to view your balance.</p>
@@ -260,7 +330,6 @@
   </div>
 </div>
 
-
 <style>
   .container {
     display: grid;
@@ -268,35 +337,34 @@
     gap: 1rem;
     margin: 20px;
   }
-  
+
   .window {
     border: 1px solid #ccc;
     border-radius: 5px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     height: 100%;
   }
-  
+
   .title-bar {
     background-color: #f0f0f0;
     padding: 10px;
     border-bottom: 1px solid #ccc;
   }
-  
+
   .title-bar-text {
     font-weight: bold;
     font-size: 16px;
   }
-  
+
   .window-body {
     padding: 15px;
     font-size: 14px;
     line-height: 1.6;
   }
-  
+
   img {
-    max-width: 100%; 
+    max-width: 100%;
     height: auto;
     margin-top: 10px;
   }
-  </style>
-  
+</style>

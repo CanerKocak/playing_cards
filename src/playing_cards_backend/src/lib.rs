@@ -627,6 +627,37 @@ fn is_custodian(principal: Principal) -> bool {
 fn __get_candid_interface_tmp_hack() -> String {
     include_str!("../playing_cards_backend.did").to_string()
 }
+
+#[update(name = "updateNftImage")]
+fn update_nft_image(token_id: u64, new_image_data: Vec<u8>) -> Result<()> {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+
+        let caller = api::caller();
+        if !state.custodians.contains(&caller) {
+            let nft = state
+                .nfts
+                .get_mut(usize::try_from(token_id)?)
+                .ok_or(Error::InvalidTokenId)?;
+
+            if nft.owner != caller {
+                return Err(Error::Unauthorized);
+            }
+
+            nft.content = new_image_data;
+        } else {
+            let nft = state
+                .nfts
+                .get_mut(usize::try_from(token_id)?)
+                .ok_or(Error::InvalidTokenId)?;
+
+            nft.content = new_image_data;
+        }
+
+        Ok(())
+    })
+}
+
 // ----------------------
 // candid interface
 // ----------------------
