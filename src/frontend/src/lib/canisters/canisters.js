@@ -1,5 +1,5 @@
-import { createActor as createCardActor, canisterId as cardCanisterId } from "declarations/playing_cards_backend";
-import { createActor as createLedgerActor } from "declarations/icrc1_ledger_canister";
+import { createActor as createCardActor, canisterId as cardCanisterId } from "../../../../declarations/backend";
+import { createActor as createLedgerActor } from "../../../../declarations/windoge";
 import { building } from "$app/environment";
 
 function dummyActor() {

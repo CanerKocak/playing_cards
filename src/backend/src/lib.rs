@@ -11,7 +11,6 @@ use ic_cdk::{
 };
 use ic_certified_map::Hash;
 use icrc_ledger_types::icrc1::transfer::BlockIndex;
-use include_base64::include_base64;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -68,30 +67,6 @@ struct InitArgs {
     logo: Option<LogoResult>,
     name: String,
     symbol: String,
-}
-
-fn create_metadata(
-    purpose: MetadataPurpose,
-    content_type: &str,
-    location_type: u8,
-    data: Vec<u8>,
-) -> MetadataDesc {
-    vec![MetadataPart {
-        purpose,
-        data,
-        key_val_data: vec![
-            (
-                "contentType".to_string(),
-                MetadataVal::TextContent(content_type.to_string()),
-            ),
-            (
-                "locationType".to_string(),
-                MetadataVal::Nat8Content(location_type),
-            ),
-        ]
-        .into_iter()
-        .collect(),
-    }]
 }
 
 #[init]
@@ -240,7 +215,7 @@ struct LogoResult {
 fn logo() /* -> &'static LogoResult */
 {
     ic_cdk::setup();
-    STATE.with(|state| call::reply((state.borrow().logo.as_ref().unwrap_or(&DEFAULT_LOGO),)))
+    STATE.with(|state| call::reply((state.borrow().logo.as_ref(),)))
 }
 
 #[query(name = "nameDip721")]
@@ -253,10 +228,10 @@ fn symbol() -> String {
     STATE.with(|state| state.borrow().symbol.clone())
 }
 
-const DEFAULT_LOGO: LogoResult = LogoResult {
-    data: Cow::Borrowed(include_base64!("logo.png")),
-    logo_type: Cow::Borrowed("image/png"),
-};
+// const DEFAULT_LOGO: LogoResult = LogoResult {
+//     data: Cow::Borrowed(include_base64!("logo.png")),
+//     logo_type: Cow::Borrowed("image/png"),
+// };
 
 #[query(name = "totalSupplyDip721")]
 fn total_supply() -> u64 {
@@ -616,16 +591,6 @@ fn set_custodian(user: Principal, custodian: bool) -> Result<()> {
 #[query]
 fn is_custodian(principal: Principal) -> bool {
     STATE.with(|state| state.borrow().custodians.contains(&principal))
-}
-
-/// This makes this Candid service self-describing, so that for example Candid UI, but also other
-/// tools, can seamlessly integrate with it. The concrete interface (method name etc.) is
-/// provisional, but works.
-///
-/// without this I couldn't open the web interface of the canister to test it quickly
-#[query]
-fn __get_candid_interface_tmp_hack() -> String {
-    include_str!("../playing_cards_backend.did").to_string()
 }
 
 #[update(name = "updateNftImage")]

@@ -1,5 +1,0 @@
-[workspace]
-members = [
-    "src/playing_cards_backend"
-]
-resolver = "2"

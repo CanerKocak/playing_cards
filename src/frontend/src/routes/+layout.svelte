@@ -5,10 +5,10 @@
   import "../app.pcss";
   import { AppRail, AppRailTile, AppShell, Modal, Toast } from "@skeletonlabs/skeleton";
   import { initializeStores } from "@skeletonlabs/skeleton";
-  import wallet from "../../../../wallet.svg";
-  import deck from "../../../../deck.svg";
-  import marketplace from "../../../../marketplace.svg";
-  import logo from "../../../../windoge98_logo.png";
+  import wallet from "/wallet.svg";
+  import deck from "/deck.svg";
+  import marketplace from "/marketplace.svg";
+  import logo from "/windoge98_logo.png";
 
   let currentTile = writable(0);
 

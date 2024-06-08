@@ -11,26 +11,31 @@
       "type": "custom",
       "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz"
     },
-    "playing_cards_backend": {
-      "candid": "src/playing_cards_backend/playing_cards_backend.did",
-      "package": "playing_cards_backend",
-      "type": "rust",
-      "init_arg": "(record { name = \"Playing Cards\"; symbol = \"Cards98\"; logo = opt record { data = \"$(base64 -i ./logo.png)\"; logo_type = \"image/png\"; }; custodians = opt vec { principal \"v5b76-hgqrn-cos3w-l6hiy-w67gk-7rixd-i5squ-iadpa-dxmer-ztjqf-lqe\" }; })",
+    "backend": {
+      "type": "custom",
+      "build": "(cd src/backend && cargo build --target wasm32-unknown-unknown --release && candid-extractor target/wasm32-unknown-unknown/release/backend.wasm > backend.did)",
+      "wasm": "src/backend/target/wasm32-unknown-unknown/release/backend.wasm",
       "optimize": "cycles",
+      "candid": "src/backend/backend.did",
       "declarations": {
         "node_compatibility": true
-      }
+      },
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
     },
-    "playing_cards_frontend": {
+    "frontend": {
       "dependencies": [
-        "playing_cards_backend",
+        "backend",
         "internet_identity"
       ],
       "source": [
-        "src/playing_cards_frontend/dist"
+        "src/frontend/dist"
       ],
       "type": "assets",
-      "workspace": "playing_cards_frontend"
+      "workspace": "frontend"
     },
     "windoge": {
       "type": "custom",
@@ -39,13 +44,9 @@
       "specified_id": "rh2pm-ryaaa-aaaan-qeniq-cai"
     }
   },
-  "defaults": {
-    "build": {
-      "args": "",
-      "packtool": ""
-    }
-  },
-  "output_env_file": ".env",
-  "version": 1
-  
+  "output_env_file": ".env"
 }
+
+
+
+

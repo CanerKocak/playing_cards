@@ -1,5 +1,5 @@
 <script>
-  import card from "../../../../hearts 4.png";
+  import card from "/hearts 4.png";
 </script>
 
 <div class="container">

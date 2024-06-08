@@ -27,13 +27,12 @@
     "vite-plugin-environment": "^1.1.3",
     "vitest": "^0.32.2"
   },
-  "name": "playing_cards_frontend",
+  "name": "frontend",
   "private": true,
   "scripts": {
     "build": "tsc && vite build",
     "format": "prettier --write \"src/**/*.{json,js,jsx,ts,tsx,css,scss}\"",
     "prebuild": "dfx generate",
-    "setup": "npm i && dfx canister create playing_cards_backend && dfx generate playing_cards_backend && dfx deploy",
     "start": "vite --port 3000",
     "test": "vitest run"
   },
