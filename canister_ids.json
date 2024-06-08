@@ -1,4 +1,10 @@
 {
+  "backend": {
+    "ic": "tn6pc-jqaaa-aaaag-alcnq-cai"
+  },
+  "frontend": {
+    "ic": "tyz6p-iyaaa-aaaag-alcoa-cai"
+  },
   "playing_cards_backend": {
     "ic": "nf46l-pqaaa-aaaag-ak54q-cai"
   },

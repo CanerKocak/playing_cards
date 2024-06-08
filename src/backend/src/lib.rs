@@ -626,4 +626,5 @@ fn update_nft_image(token_id: u64, new_image_data: Vec<u8>) -> Result<()> {
 // ----------------------
 // candid interface
 // ----------------------
+
 ic_cdk::export_candid!();

@@ -2,7 +2,6 @@
 
 // 1. Import the Skeleton plugin
 const { skeleton } = require('@skeletonlabs/tw-plugin');
-import { myCustomTheme } from '../themes/98style';
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -24,7 +23,6 @@ module.exports = {
 		skeleton({
 			themes: {
 				preset: [ "rocket" ],
-				custom: [ myCustomTheme ]
 			}
 		}),
 	]

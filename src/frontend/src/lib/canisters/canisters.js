@@ -1,5 +1,4 @@
 import { createActor as createCardActor, canisterId as cardCanisterId } from "../../../../declarations/backend";
-import { createActor as createLedgerActor } from "../../../../declarations/windoge";
 import { building } from "$app/environment";
 
 function dummyActor() {

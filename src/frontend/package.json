@@ -5,12 +5,13 @@
     "@dfinity/principal": "^0.20.0",
     "@tailwindcss/forms": "^0.5.7"
   },
+  
   "devDependencies": {
     "@skeletonlabs/skeleton": "^2.9.0",
     "@skeletonlabs/tw-plugin": "^0.3.1",
-    "@sveltejs/adapter-static": "^2.0.0",
+    "@sveltejs/adapter-static": "^2.0.3",
     "@sveltejs/kit": "^1.21.0",
-    "@sveltejs/vite-plugin-svelte": "^2.4.2",
+    "@sveltejs/vite-plugin-svelte": "^2.5.3",
     "@testing-library/jest-dom": "^5.16.5",
     "autoprefixer": "^10.4.16",
     "cross-fetch": "^3.1.6",
@@ -28,6 +29,7 @@
     "vitest": "^0.32.2"
   },
   "name": "frontend",
+  "type": "module",
   "private": true,
   "scripts": {
     "build": "tsc && vite build",
@@ -35,7 +37,5 @@
     "prebuild": "dfx generate",
     "start": "vite --port 3000",
     "test": "vitest run"
-  },
-  "type": "module",
-  "version": "0.0.0"
+  }
 }

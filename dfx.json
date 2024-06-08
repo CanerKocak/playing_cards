@@ -17,9 +17,6 @@
       "wasm": "src/backend/target/wasm32-unknown-unknown/release/backend.wasm",
       "optimize": "cycles",
       "candid": "src/backend/backend.did",
-      "declarations": {
-        "node_compatibility": true
-      },
       "metadata": [
         {
           "name": "candid:service"
@@ -27,10 +24,6 @@
       ]
     },
     "frontend": {
-      "dependencies": [
-        "backend",
-        "internet_identity"
-      ],
       "source": [
         "src/frontend/dist"
       ],
