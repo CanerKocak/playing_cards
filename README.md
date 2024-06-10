@@ -1,4 +1,5 @@
 # NFT-Integrated Card Game and Marketplace
+# https://tyz6p-iyaaa-aaaag-alcoa-cai.icp0.io/
 
 ## Overview
 
@@ -25,3 +26,6 @@ We are developing an innovative card game platform where users can buy, sell, an
 ---
 
 This concept is currently in the brainstorming phase, and we are open to feedback and suggestions to refine and enhance the idea further.
+
+The idea is that the site will be gold yellow windoge98 style
+![design](https://github.com/CanerKocak/playing_cards/assets/54007585/d188ebe6-5dd4-431e-aefd-e05d5337c190)
